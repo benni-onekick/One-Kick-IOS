@@ -69,7 +69,8 @@ struct ApiMatchRow: View {
                         Text(match.teams.home.name)
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.white)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.75)
                             .multilineTextAlignment(.leading)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -83,7 +84,8 @@ struct ApiMatchRow: View {
                         Text(match.teams.away.name)
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.white)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(3)
+                            .minimumScaleFactor(0.75)
                             .multilineTextAlignment(.trailing)
                         teamLogo(match.teams.away.logo)
                     }

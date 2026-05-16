@@ -119,11 +119,6 @@ class CommunityPunkteViewModel: ObservableObject {
         guard let communityId = community.id else { return }
 
         let allBets = await loadAllBets(communityId: communityId)
-        guard !allBets.isEmpty else {
-            totalLeaderboard      = []
-            spielwocheLeaderboard = []
-            return
-        }
 
         var leagueIdToDisplayName: [Int: String] = [:]
         for name in community.activeLeagues {
@@ -194,14 +189,27 @@ class CommunityPunkteViewModel: ObservableObject {
         }
         weekMatchesByLeague = wml.mapValues { $0.sorted { $0.fixture.date < $1.fixture.date } }
 
-        spielwocheLeaderboard = buildSpielwocheLeaderboard(
-            betsByUser: betsByUser, matchDict: weekDict,
-            nameOverride: leagueIdToDisplayName
-        ).sorted { $0.points > $1.points }
+        if betsByUser.isEmpty {
+            // Noch keine Tipps: aktuellen User mit 0 Punkten anzeigen
+            if let user = Auth.auth().currentUser {
+                let name = user.displayName ?? shortName(user.email ?? "Du")
+                spielwocheLeaderboard = [
+                    UserPointsEntry(id: user.uid, displayName: name, points: 0, leagueBreakdown: [])
+                ]
+            } else {
+                spielwocheLeaderboard = []
+            }
+            totalLeaderboard = []
+        } else {
+            spielwocheLeaderboard = buildSpielwocheLeaderboard(
+                betsByUser: betsByUser, matchDict: weekDict,
+                nameOverride: leagueIdToDisplayName
+            ).sorted { $0.points > $1.points }
 
-        // Gesamt-Leaderboard wird separat geladen (sequenziell, vermeidet Rate-Limiting)
-        totalLeaderboard = []
-        Task { await loadGesamtData() }
+            // Gesamt-Leaderboard wird separat geladen (sequenziell, vermeidet Rate-Limiting)
+            totalLeaderboard = []
+            Task { await loadGesamtData() }
+        }
     }
 
     // Lädt Saisonspiele sequenziell um API-Rate-Limits zu vermeiden
