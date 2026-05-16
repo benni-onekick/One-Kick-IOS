@@ -1,0 +1,17 @@
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# Xcode workspace shared data (nicht für alle relevant)
+*.xcworkspace/xcshareddata/
+
+# Build products
+DerivedData/
+build/
+
+# CocoaPods / SPM
+.build/
+Pods/
+
+# macOS
+.DS_Store
