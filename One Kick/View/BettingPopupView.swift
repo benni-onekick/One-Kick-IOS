@@ -15,6 +15,7 @@ struct BettingPopupView: View {
     @Binding var isPresented: Bool
     let match: MatchData
     let communityId: String
+    var prediction: MatchPrediction? = nil
     var onSaved: (() -> Void)? = nil
 
     @State private var homeTip: String = ""
@@ -46,6 +47,11 @@ struct BettingPopupView: View {
                         .font(.title2).bold().foregroundColor(.white)
                     Text(matchDateTime)
                         .font(.caption).foregroundColor(.gray)
+                }
+
+                // KI-PROGNOSE
+                if let pred = prediction {
+                    predictionView(pred)
                 }
 
                 // TEAMS & EINGABE
@@ -94,6 +100,61 @@ struct BettingPopupView: View {
             .shadow(color: .black.opacity(0.3), radius: 20)
             .padding(.horizontal, 30)
         }
+    }
+
+    @ViewBuilder
+    private func predictionView(_ pred: MatchPrediction) -> some View {
+        let h = parsePercent(pred.percent.home) / 100
+        let d = parsePercent(pred.percent.draw) / 100
+        let a = max(0, 1 - h - d)
+
+        VStack(spacing: 6) {
+            HStack(spacing: 5) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 10)).foregroundColor(.oneKickNeon)
+                Text("KI-Prognose")
+                    .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
+                Spacer()
+                if let advice = pred.advice {
+                    Text(advice)
+                        .font(.system(size: 9)).foregroundColor(.gray.opacity(0.7))
+                        .lineLimit(1)
+                }
+            }
+
+            GeometryReader { geo in
+                HStack(spacing: 2) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.green)
+                        .frame(width: max(0, geo.size.width * h))
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.gray.opacity(0.5))
+                        .frame(width: max(0, geo.size.width * d))
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.red.opacity(0.7))
+                        .frame(width: max(0, geo.size.width * a))
+                }
+            }
+            .frame(height: 7)
+
+            HStack {
+                Text("Heim \(pred.percent.home)")
+                    .font(.system(size: 10, weight: .bold)).foregroundColor(.green)
+                Spacer()
+                Text("Unent. \(pred.percent.draw)")
+                    .font(.system(size: 10)).foregroundColor(.gray)
+                Spacer()
+                Text("Ausw. \(pred.percent.away)")
+                    .font(.system(size: 10, weight: .bold)).foregroundColor(.red.opacity(0.85))
+            }
+        }
+        .padding(12)
+        .background(Color.black.opacity(0.25))
+        .cornerRadius(12)
+    }
+
+    private func parsePercent(_ s: String) -> Double {
+        Double(s.replacingOccurrences(of: "%", with: "").trimmingCharacters(in: .whitespaces)) ?? 0
     }
 
     @ViewBuilder

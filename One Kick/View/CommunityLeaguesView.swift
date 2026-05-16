@@ -87,6 +87,43 @@ struct LeagueMapper {
         }
     }
 
+    static func getName(for id: Int) -> String? {
+        switch id {
+        case 78:   return "Bundesliga"
+        case 79:   return "2. Bundesliga"
+        case 80:   return "3. Liga"
+        case 81:   return "DFB-Pokal"
+        case 2:    return "Champions League"
+        case 3:    return "Europa League"
+        case 848:  return "Conference League"
+        case 39:   return "Premier League"
+        case 140:  return "La Liga"
+        case 135:  return "Serie A"
+        case 61:   return "Ligue 1"
+        case 88:   return "Eredivisie"
+        case 94:   return "Liga Portugal"
+        case 207:  return "Super League"
+        case 203:  return "Süper Lig"
+        case 218:  return "Österreich Liga"
+        case 45:   return "FA Cup"
+        case 143:  return "Copa del Rey"
+        case 137:  return "Coppa Italia"
+        case 66:   return "Coupe de France"
+        case 253:  return "MLS"
+        case 307:  return "Saudi Pro League"
+        case 1:    return "Weltmeisterschaft"
+        case 4:    return "Europameisterschaft"
+        case 5:    return "Nations League"
+        case 32:   return "WM Qualifikation"
+        case 960:  return "EM Qualifikation"
+        case 82:   return "Frauen-Bundesliga"
+        case 525:  return "Frauen Champions League"
+        case 6:    return "Frauen WM"
+        case 1191: return "Frauen EM"
+        default:   return nil
+        }
+    }
+
     // MLS läuft nach Kalenderjahr → season=2026, alle anderen nach Saison-Startjahr
     static func getSeason(for leagueID: Int) -> Int {
         switch leagueID {

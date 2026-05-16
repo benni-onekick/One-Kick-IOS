@@ -12,6 +12,7 @@ import Combine
 class LeagueBettingViewModel: ObservableObject {
     @Published var matches: [MatchData] = []
     @Published var myBets: [Int: (home: Int, away: Int)] = [:]
+    @Published var predictions: [Int: MatchPrediction] = [:]
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
     @Published var currentMatchday: Int = 1
@@ -55,6 +56,7 @@ class LeagueBettingViewModel: ObservableObject {
         }
         isLoading = false
         await loadBets()
+        await loadPredictions()
     }
 
     func loadMatchday(_ matchday: Int) async {
@@ -63,6 +65,7 @@ class LeagueBettingViewModel: ObservableObject {
         let round = currentRoundTemplate.replacingOccurrences(of: "{n}", with: "\(clamped)")
         await loadRound(round)
         await loadBets()
+        await loadPredictions()
     }
 
     func loadKORound(_ index: Int) async {
@@ -71,6 +74,7 @@ class LeagueBettingViewModel: ObservableObject {
         guard let round = allRounds[safe: clamped] else { return }
         await loadRound(round)
         await loadBets()
+        await loadPredictions()
     }
 
     private func loadRound(_ round: String) async {
@@ -88,6 +92,21 @@ class LeagueBettingViewModel: ObservableObject {
     func loadBets() async {
         guard !communityId.isEmpty else { return }
         myBets = await betManager.loadBetScores(communityId: communityId)
+    }
+
+    func loadPredictions() async {
+        let futureIds = matches
+            .filter { ["NS", "TBD"].contains($0.fixture.status.short) }
+            .map(\.fixture.id)
+        guard !futureIds.isEmpty else { return }
+        await withTaskGroup(of: (Int, MatchPrediction?).self) { group in
+            for id in futureIds {
+                group.addTask { (id, await self.service.fetchPrediction(for: id)) }
+            }
+            for await (id, pred) in group {
+                if let p = pred { predictions[id] = p }
+            }
+        }
     }
 }
 
@@ -109,6 +128,9 @@ struct LeagueBettingView: View {
     @State private var showBettingPopup = false
     @State private var selectedMatchForPopup: MatchData?
 
+    @State private var showStandingsSheet = false
+    @State private var selectedMatchForLineup: MatchData?
+
     var body: some View {
         ZStack {
             Color.oneKickBlack.ignoresSafeArea()
@@ -125,8 +147,20 @@ struct LeagueBettingView: View {
                         Text(community.name).font(.caption).foregroundColor(.gray)
                     }
                     Spacer()
-                    Button(action: { HapticManager.instance.impact(style: .light) }) {
-                        Image(systemName: "person.crop.circle").font(.system(size: 32)).foregroundColor(.white)
+                    if !viewModel.isKOLeague {
+                        Button(action: {
+                            HapticManager.instance.impact(style: .light)
+                            showStandingsSheet = true
+                        }) {
+                            Text("Tabelle")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.oneKickNeon)
+                                .padding(.horizontal, 12).padding(.vertical, 7)
+                                .background(Color.oneKickNeon.opacity(0.12))
+                                .cornerRadius(20)
+                        }
+                    } else {
+                        Color.clear.frame(width: 40, height: 40)
                     }
                 }
                 .padding(.horizontal).padding(.top, 10).padding(.bottom, 20)
@@ -208,6 +242,7 @@ struct LeagueBettingView: View {
                     isPresented: $showBettingPopup,
                     match: match,
                     communityId: community.id ?? "",
+                    prediction: viewModel.predictions[match.fixture.id],
                     onSaved: {
                         Task { await viewModel.loadBets() }
                     }
@@ -216,6 +251,12 @@ struct LeagueBettingView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showStandingsSheet) {
+            StandingsSheet(leagueID: leagueID, leagueName: leagueName)
+        }
+        .sheet(item: $selectedMatchForLineup) { match in
+            LineupSheet(match: match)
+        }
         .onAppear {
             Task {
                 await viewModel.loadCurrentMatchday(
@@ -271,14 +312,34 @@ struct LeagueBettingView: View {
 
         } else {
             ForEach(viewModel.matches, id: \.fixture.id) { match in
-                ApiMatchRow(
-                    match: match,
-                    onTapTip: {
-                        selectedMatchForPopup = match
-                        showBettingPopup = true
-                    },
-                    myTip: viewModel.myBets[match.fixture.id]
-                )
+                VStack(spacing: 6) {
+                    ApiMatchRow(
+                        match: match,
+                        onTapTip: {
+                            selectedMatchForPopup = match
+                            showBettingPopup = true
+                        },
+                        myTip: viewModel.myBets[match.fixture.id],
+                        prediction: viewModel.predictions[match.fixture.id]
+                    )
+
+                    Button(action: {
+                        HapticManager.instance.impact(style: .light)
+                        selectedMatchForLineup = match
+                    }) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "person.3.fill")
+                                .font(.system(size: 10))
+                            Text("Aufstellung")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(Color.oneKickDarkGray.opacity(0.5))
+                        .cornerRadius(10)
+                    }
+                }
                 .padding(.horizontal)
             }
         }

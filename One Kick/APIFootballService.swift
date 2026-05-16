@@ -13,6 +13,17 @@ class APIFootballService {
     private var standingsCache: [Int: (entries: [StandingEntry], date: Date)] = [:]
     private let cacheExpiry: TimeInterval = 6 * 3600
 
+    // Lineups-Cache (5min – werden 1h vor Anpfiff veröffentlicht)
+    private var lineupsCache: [Int: (lineups: [TeamLineup], date: Date)] = [:]
+    private let lineupsCacheExpiry: TimeInterval = 5 * 60
+
+    // Predictions-Cache (1h)
+    private var predictionsCache: [Int: (prediction: MatchPrediction, date: Date)] = [:]
+
+    // Injuries-Cache (3h)
+    private var injuriesCache: [Int: (injuries: [InjuryData], date: Date)] = [:]
+    private let injuriesCacheExpiry: TimeInterval = 3 * 3600
+
     // Display-Round-Cache (STATISCH = wird zwischen allen ViewModels geteilt, 5min)
     // Löst "leere Liga beim ersten Tap" → zweiter Aufruf trifft sofort den Cache
     private static var roundCache: [Int: (round: String, matchday: Int, matches: [MatchData], date: Date)] = [:]
@@ -243,6 +254,66 @@ class APIFootballService {
 
         standingsCache[leagueID] = (entries: group, date: Date())
         return group
+    }
+
+    // MARK: - Predictions
+
+    func fetchPrediction(for fixtureId: Int) async -> MatchPrediction? {
+        if let cached = predictionsCache[fixtureId],
+           Date().timeIntervalSince(cached.date) < cacheExpiry {
+            return cached.prediction
+        }
+        var comp = URLComponents(string: "\(baseURL)/predictions")!
+        comp.queryItems = [URLQueryItem(name: "fixture", value: "\(fixtureId)")]
+        guard let url = comp.url,
+              let data = try? await performRequest(url: url),
+              let resp = try? JSONDecoder().decode(APIPredictionResponse.self, from: data),
+              let prediction = resp.response.first?.predictions else {
+            return nil
+        }
+        predictionsCache[fixtureId] = (prediction: prediction, date: Date())
+        return prediction
+    }
+
+    // MARK: - Injuries
+
+    func fetchInjuries(for leagueID: Int) async -> [InjuryData] {
+        if let cached = injuriesCache[leagueID],
+           Date().timeIntervalSince(cached.date) < injuriesCacheExpiry {
+            return cached.injuries
+        }
+        var comp = URLComponents(string: "\(baseURL)/injuries")!
+        comp.queryItems = [
+            URLQueryItem(name: "league", value: "\(leagueID)"),
+            URLQueryItem(name: "season", value: "\(season(for: leagueID))")
+        ]
+        guard let url = comp.url,
+              let data = try? await performRequest(url: url),
+              let resp = try? JSONDecoder().decode(APIInjuriesResponse.self, from: data) else {
+            return []
+        }
+        injuriesCache[leagueID] = (injuries: resp.response, date: Date())
+        return resp.response
+    }
+
+    // MARK: - Lineups
+
+    func fetchLineups(for fixtureId: Int) async -> [TeamLineup] {
+        if let cached = lineupsCache[fixtureId],
+           Date().timeIntervalSince(cached.date) < lineupsCacheExpiry {
+            return cached.lineups
+        }
+
+        var comp = URLComponents(string: "\(baseURL)/fixtures/lineups")!
+        comp.queryItems = [URLQueryItem(name: "fixture", value: "\(fixtureId)")]
+        guard let url = comp.url,
+              let data = try? await performRequest(url: url),
+              let resp = try? JSONDecoder().decode(APILineupsResponse.self, from: data) else {
+            return []
+        }
+
+        lineupsCache[fixtureId] = (lineups: resp.response, date: Date())
+        return resp.response
     }
 
     // MARK: - Players

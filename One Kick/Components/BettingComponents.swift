@@ -18,6 +18,7 @@ struct ApiMatchRow: View {
     var onTapTip: (() -> Void)? = nil
     var myTip: (home: Int, away: Int)? = nil
     var showLeague: Bool = false
+    var prediction: MatchPrediction? = nil
 
     var isLive:     Bool { ["1H","2H","HT","ET","P","LIVE"].contains(match.fixture.status.short) }
     var isFuture:   Bool { ["NS","TBD"].contains(match.fixture.status.short) }
@@ -93,9 +94,14 @@ struct ApiMatchRow: View {
                 }
 
                 if isFuture {
-                    Text(formattedDateTime)
-                        .font(.caption)
-                        .foregroundColor(.gray)
+                    HStack(spacing: 12) {
+                        Text(formattedDateTime)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        if let pred = prediction {
+                            predictionBadge(pred)
+                        }
+                    }
                 }
             }
 
@@ -261,6 +267,32 @@ struct ApiMatchRow: View {
         let ar = ad > 0 ? 1 : (ad < 0 ? -1 : 0)
         if tr == ar { pts += 3 }
         return pts
+    }
+
+    // MARK: - Prognose
+
+    private func predictionBadge(_ pred: MatchPrediction) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 9))
+                .foregroundColor(.oneKickNeon)
+            Text(predictionSummary(pred))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.gray)
+        }
+    }
+
+    private func predictionSummary(_ pred: MatchPrediction) -> String {
+        let h = parsePercent(pred.percent.home)
+        let a = parsePercent(pred.percent.away)
+        let d = parsePercent(pred.percent.draw)
+        if h >= a && h >= d { return "Heimsieg \(pred.percent.home)" }
+        if a > h && a >= d  { return "Auswärtssieg \(pred.percent.away)" }
+        return "Unentschieden \(pred.percent.draw)"
+    }
+
+    private func parsePercent(_ s: String) -> Double {
+        Double(s.replacingOccurrences(of: "%", with: "").trimmingCharacters(in: .whitespaces)) ?? 0
     }
 
     // MARK: - Logo
