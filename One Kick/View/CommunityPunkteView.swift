@@ -126,6 +126,21 @@ struct CommunityPunkteView: View {
 
     // MARK: Leaderboard
 
+    /// Berechnet Ränge mit Gleichstand: gleiche Punkte → gleicher Rang.
+    private func tiedRanks(for entries: [UserPointsEntry]) -> [Int] {
+        var ranks: [Int] = []
+        for (i, entry) in entries.enumerated() {
+            if i == 0 {
+                ranks.append(1)
+            } else if entry.points == entries[i - 1].points {
+                ranks.append(ranks[i - 1])
+            } else {
+                ranks.append(i + 1)
+            }
+        }
+        return ranks
+    }
+
     private func leaderboardView(entries: [UserPointsEntry], label: String) -> some View {
         ScrollView {
             LazyVStack(spacing: 6) {
@@ -133,8 +148,9 @@ struct CommunityPunkteView: View {
                     emptyPlaceholder
                 } else {
                     tableHeader(label: label)
-                    ForEach(Array(entries.enumerated()), id: \.element.id) { rank, entry in
-                        LeaderboardRowView(rank: rank + 1, entry: entry,
+                    let ranks = tiedRanks(for: entries)
+                    ForEach(Array(entries.enumerated()), id: \.element.id) { i, entry in
+                        LeaderboardRowView(rank: ranks[i], entry: entry,
                                            isCurrentUser: entry.id == currentUserId)
                     }
                 }
@@ -216,24 +232,29 @@ struct CommunityPunkteView: View {
                     }
                     .frame(maxWidth: .infinity).padding(.top, 60).padding(.horizontal)
                 } else {
-                    // Sieger-Banner nur wenn jemand wirklich Punkte hat
-                    if let winner = viewModel.spielwocheLeaderboard.first, winner.points > 0 {
-                        HStack(spacing: 14) {
-                            Text("🏆").font(.system(size: 30))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Spielwoche-Sieger")
+                    let swRanks  = tiedRanks(for: viewModel.spielwocheLeaderboard)
+                    let topPts   = viewModel.spielwocheLeaderboard.first?.points ?? 0
+                    let winners  = topPts > 0
+                        ? viewModel.spielwocheLeaderboard.filter { $0.points == topPts }
+                        : []
+
+                    // Sieger-Banner: alle Erstplatzierten mit >0 Punkten
+                    if !winners.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 6) {
+                                Text("🏆").font(.system(size: 16))
+                                Text(winners.count > 1 ? "Spielwoche-Sieger" : "Spielwoche-Sieger")
                                     .font(.caption.bold()).foregroundColor(.oneKickNeon.opacity(0.8))
-                                Text(winner.displayName)
-                                    .font(.headline).bold().foregroundColor(.white)
+                                Spacer()
+                                Text("\(topPts) Pkt")
+                                    .font(.caption.bold()).foregroundColor(.oneKickNeon)
                             }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("\(winner.points)")
-                                    .font(.title2).bold().foregroundColor(.oneKickNeon)
-                                Text("Punkte").font(.caption2).foregroundColor(.gray)
+                            ForEach(winners, id: \.id) { w in
+                                Text(w.displayName)
+                                    .font(.subheadline).bold().foregroundColor(.white)
                             }
                         }
-                        .padding(16)
+                        .padding(14)
                         .background(Color.oneKickNeon.opacity(0.08))
                         .cornerRadius(16)
                         .overlay(RoundedRectangle(cornerRadius: 16)
@@ -242,9 +263,9 @@ struct CommunityPunkteView: View {
                     }
 
                     tableHeader(label: viewModel.currentWeekLabel)
-                    ForEach(Array(viewModel.spielwocheLeaderboard.enumerated()), id: \.element.id) { rank, entry in
+                    ForEach(Array(viewModel.spielwocheLeaderboard.enumerated()), id: \.element.id) { i, entry in
                         SpielwocheLeaderboardRowView(
-                            rank: rank + 1, entry: entry,
+                            rank: swRanks[i], entry: entry,
                             isCurrentUser: entry.id == currentUserId,
                             weekMatchesByLeague: viewModel.weekMatchesByLeague
                         )

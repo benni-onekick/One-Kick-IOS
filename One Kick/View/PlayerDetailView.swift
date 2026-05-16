@@ -40,7 +40,8 @@ struct LeagueLeaderboardView: View {
                         }
                         .frame(maxWidth: .infinity).padding(.top, 60).padding(.horizontal)
                     } else {
-                        ForEach(Array(rankings.enumerated()), id: \.element.id) { rank, entry in
+                        let ranks = tiedRanks(for: rankings)
+                        ForEach(Array(rankings.enumerated()), id: \.element.id) { i, entry in
                             let isCurrentUser = entry.id == currentUserId
                             NavigationLink(destination: PlayerMatchTipsView(
                                 entry: entry,
@@ -48,9 +49,9 @@ struct LeagueLeaderboardView: View {
                                 isCurrentUser: isCurrentUser
                             )) {
                                 HStack(spacing: 12) {
-                                    Text("\(rank + 1)")
+                                    Text("\(ranks[i])")
                                         .font(.system(size: 16, weight: .black))
-                                        .foregroundColor(rankColor(rank + 1))
+                                        .foregroundColor(rankColor(ranks[i]))
                                         .frame(width: 28, alignment: .center)
 
                                     Text(entry.displayName)
@@ -93,6 +94,20 @@ struct LeagueLeaderboardView: View {
         }
         .navigationTitle(leagueName)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func tiedRanks(for entries: [UserPointsEntry]) -> [Int] {
+        var ranks: [Int] = []
+        for (i, entry) in entries.enumerated() {
+            if i == 0 {
+                ranks.append(1)
+            } else if entry.points == entries[i - 1].points {
+                ranks.append(ranks[i - 1])
+            } else {
+                ranks.append(i + 1)
+            }
+        }
+        return ranks
     }
 
     private func rankColor(_ rank: Int) -> Color {
