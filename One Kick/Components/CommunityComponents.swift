@@ -71,7 +71,7 @@ struct LeagueSelectionChip: View {
     let title: String; let isSelected: Bool; var onTap: () -> Void
     var body: some View {
         Button(action: onTap) {
-            Text(title).font(.caption).bold().foregroundColor(isSelected ? .black : .white).padding(.vertical, 12).padding(.horizontal, 10).frame(maxWidth: .infinity).background(isSelected ? Color.oneKickNeon : Color.oneKickDarkGray).cornerRadius(10).overlay(RoundedRectangle(cornerRadius: 10).stroke(isSelected ? Color.oneKickNeon : Color.white.opacity(0.15), lineWidth: 1)).lineLimit(2).minimumScaleFactor(0.8)
+            Text(title).font(.caption).bold().foregroundColor(isSelected ? .black : .white).padding(.vertical, 12).padding(.horizontal, 10).frame(maxWidth: .infinity, minHeight: 44).background(isSelected ? Color.oneKickNeon : Color.oneKickDarkGray).cornerRadius(10).overlay(RoundedRectangle(cornerRadius: 10).stroke(isSelected ? Color.oneKickNeon : Color.white.opacity(0.15), lineWidth: 1)).lineLimit(1).minimumScaleFactor(0.6)
         }
     }
 }
