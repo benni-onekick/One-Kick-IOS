@@ -123,34 +123,36 @@ struct StartseiteView: View {
     @State private var selectedTip: OpenTipItem?
     @State private var showProfileSheet = false
 
+    private var hasCommunities: Bool { !communityManager.communities.isEmpty }
+
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color.oneKickBlack.ignoresSafeArea()
+        ZStack {
+            Color.oneKickBlack.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
 
-                        HStack(alignment: .top) {
-                            Text("Willkommen zurück!")
-                                .font(.system(size: 40, weight: .black)).foregroundColor(.white)
-                            Spacer()
-                            Button(action: { showProfileSheet = true }) {
-                                Image(systemName: "person.crop.circle")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.white)
-                            }
+                    HStack(alignment: .top) {
+                        Text("Willkommen zurück!")
+                            .font(.system(size: 40, weight: .black)).foregroundColor(.white)
+                        Spacer()
+                        Button(action: { showProfileSheet = true }) {
+                            Image(systemName: "person.crop.circle")
+                                .font(.system(size: 30))
+                                .foregroundColor(.white)
                         }
-                        .padding(.horizontal).padding(.top, 20)
+                    }
+                    .padding(.horizontal).padding(.top, 8)
 
+                    // Offene Tipps nur anzeigen wenn in einer Community
+                    if hasCommunities {
                         sectionHeader("Meine offenen Tipps")
 
                         if viewModel.isLoadingTips {
                             loadingRow()
-                        } else if communityManager.communities.isEmpty {
-                            emptyState(icon: "person.3", text: "Tritt einer Community bei, um Tipps zu sehen.")
                         } else if viewModel.openTips.isEmpty {
-                            emptyState(icon: "checkmark.circle.fill", text: "Du hast alle Spiele für den aktuellen Spieltag getippt.")
+                            emptyState(icon: "checkmark.circle.fill",
+                                       text: "Du hast alle Spiele für den aktuellen Spieltag getippt.")
                         } else {
                             VStack(spacing: 12) {
                                 ForEach(viewModel.openTips) { tip in
@@ -163,48 +165,47 @@ struct StartseiteView: View {
                             }
                             .padding(.horizontal)
                         }
-
-                        sectionHeader("Top Spiele")
-
-                        if viewModel.isLoadingTop {
-                            loadingRow()
-                        } else if viewModel.topMatches.isEmpty {
-                            emptyState(icon: "sportscourt", text: "Keine Top-Spiele verfügbar.")
-                        } else {
-                            VStack(spacing: 12) {
-                                ForEach(viewModel.topMatches, id: \.fixture.id) { match in
-                                    let isFuture = ["NS", "TBD"].contains(match.fixture.status.short)
-                                    ApiMatchRow(
-                                        match: match,
-                                        myTip: isFuture ? nil : viewModel.topMatchTips[match.fixture.id],
-                                        showLeague: true
-                                    )
-                                    .padding(.horizontal)
-                                }
-                            }
-                        }
-
-                        Spacer(minLength: 50)
                     }
-                }
 
-                if showBettingPopup, let tip = selectedTip {
-                    BettingPopupView(
-                        isPresented: $showBettingPopup,
-                        match: tip.match,
-                        communityId: tip.community.id ?? "",
-                        onSaved: {
-                            viewModel.removeTip(tip)
-                            Task {
-                                try? await Task.sleep(for: .seconds(2))
-                                await viewModel.loadData(communities: communityManager.communities)
+                    sectionHeader("Top Spiele")
+
+                    if viewModel.isLoadingTop {
+                        loadingRow()
+                    } else if viewModel.topMatches.isEmpty {
+                        emptyState(icon: "sportscourt", text: "Keine Top-Spiele verfügbar.")
+                    } else {
+                        VStack(spacing: 12) {
+                            ForEach(viewModel.topMatches, id: \.fixture.id) { match in
+                                let isFuture = ["NS", "TBD"].contains(match.fixture.status.short)
+                                ApiMatchRow(
+                                    match: match,
+                                    myTip: isFuture ? nil : viewModel.topMatchTips[match.fixture.id],
+                                    showLeague: true
+                                )
+                                .padding(.horizontal)
                             }
                         }
-                    )
-                    .zIndex(2)
+                    }
+
+                    Spacer(minLength: 50)
                 }
             }
-            .navigationBarHidden(true)
+
+            if showBettingPopup, let tip = selectedTip {
+                BettingPopupView(
+                    isPresented: $showBettingPopup,
+                    match: tip.match,
+                    communityId: tip.community.id ?? "",
+                    onSaved: {
+                        viewModel.removeTip(tip)
+                        Task {
+                            try? await Task.sleep(for: .seconds(2))
+                            await viewModel.loadData(communities: communityManager.communities)
+                        }
+                    }
+                )
+                .zIndex(2)
+            }
         }
         .sheet(isPresented: $showProfileSheet) {
             ProfileView()
