@@ -38,6 +38,7 @@ class CommunityPunkteViewModel: ObservableObject {
     // Cache für Wochen-Navigation ohne erneutes Bets-Laden
     private var cachedBetsByUser:             [String: [CommunityBet]] = [:]
     private var cachedLeagueIdToDisplayName:  [Int: String]            = [:]
+    private var cachedMemberNames:            [String: String]         = [:]
 
     @Published var isLoadingSpielwoche = false
 
@@ -118,7 +119,10 @@ class CommunityPunkteViewModel: ObservableObject {
 
         guard let communityId = community.id else { return }
 
-        let allBets = await loadAllBets(communityId: communityId)
+        // Member-Namen + Bets parallel laden
+        async let memberNamesTask  = loadMemberDisplayNames()
+        async let allBetsTask      = loadAllBets(communityId: communityId)
+        let (memberNames, allBets) = await (memberNamesTask, allBetsTask)
 
         var leagueIdToDisplayName: [Int: String] = [:]
         for name in community.activeLeagues {
@@ -130,6 +134,7 @@ class CommunityPunkteViewModel: ObservableObject {
 
         cachedBetsByUser            = betsByUser
         cachedLeagueIdToDisplayName = leagueIdToDisplayName
+        cachedMemberNames           = memberNames
 
         let iso = ISO8601DateFormatter()
         let toStr = String(iso.string(from: Date()).prefix(10))
@@ -189,27 +194,18 @@ class CommunityPunkteViewModel: ObservableObject {
         }
         weekMatchesByLeague = wml.mapValues { $0.sorted { $0.fixture.date < $1.fixture.date } }
 
-        if betsByUser.isEmpty {
-            // Noch keine Tipps: aktuellen User mit 0 Punkten anzeigen
-            if let user = Auth.auth().currentUser {
-                let name = user.displayName ?? shortName(user.email ?? "Du")
-                spielwocheLeaderboard = [
-                    UserPointsEntry(id: user.uid, displayName: name, points: 0, leagueBreakdown: [])
-                ]
-            } else {
-                spielwocheLeaderboard = []
-            }
-            totalLeaderboard = []
-        } else {
-            spielwocheLeaderboard = buildSpielwocheLeaderboard(
-                betsByUser: betsByUser, matchDict: weekDict,
-                nameOverride: leagueIdToDisplayName
-            ).sorted { $0.points > $1.points }
+        spielwocheLeaderboard = buildSpielwocheLeaderboard(
+            betsByUser: betsByUser, matchDict: weekDict,
+            nameOverride: leagueIdToDisplayName,
+            memberNames: memberNames
+        ).sorted { $0.points > $1.points }
 
-            // Gesamt-Leaderboard wird separat geladen (sequenziell, vermeidet Rate-Limiting)
-            totalLeaderboard = []
-            Task { await loadGesamtData() }
-        }
+        // Gesamt-Leaderboard: erst alle Member bei 0 zeigen, dann echte Punkte laden
+        totalLeaderboard = memberNames.map { uid, name in
+            UserPointsEntry(id: uid, displayName: name, points: 0, leagueBreakdown: [])
+        }.sorted { $0.displayName.localizedCompare($1.displayName) == .orderedAscending }
+
+        Task { await loadGesamtData() }
     }
 
     // Lädt Saisonspiele sequenziell um API-Rate-Limits zu vermeiden
@@ -243,7 +239,8 @@ class CommunityPunkteViewModel: ObservableObject {
 
         totalLeaderboard = buildLeaderboard(
             betsByUser: cachedBetsByUser, matchDict: totalDict,
-            nameOverride: cachedLeagueIdToDisplayName
+            nameOverride: cachedLeagueIdToDisplayName,
+            memberNames: cachedMemberNames
         ).sorted { $0.points > $1.points }
     }
 
@@ -306,7 +303,8 @@ class CommunityPunkteViewModel: ObservableObject {
         spielwocheLeaderboard = buildSpielwocheLeaderboard(
             betsByUser:   cachedBetsByUser,
             matchDict:    weekDict,
-            nameOverride: cachedLeagueIdToDisplayName
+            nameOverride: cachedLeagueIdToDisplayName,
+            memberNames:  cachedMemberNames
         ).sorted { $0.points > $1.points }
     }
 
@@ -315,10 +313,17 @@ class CommunityPunkteViewModel: ObservableObject {
     private func buildLeaderboard(
         betsByUser: [String: [CommunityBet]],
         matchDict: [Int: MatchData],
-        nameOverride: [Int: String]
+        nameOverride: [Int: String],
+        memberNames: [String: String]
     ) -> [UserPointsEntry] {
-        betsByUser.map { userId, userBets in
-            let displayName = shortName(userBets.first?.displayName ?? userId)
+        var allIds = Set(memberNames.keys)
+        allIds.formUnion(betsByUser.keys)
+
+        return allIds.map { userId in
+            let displayName = memberNames[userId]
+                ?? shortName(betsByUser[userId]?.first?.displayName ?? userId)
+            let userBets = betsByUser[userId] ?? []
+
             var leaguePointsMap: [String: Int] = [:]
             var leagueTipsMap:   [String: [MatchTipEntry]] = [:]
 
@@ -348,14 +353,22 @@ class CommunityPunkteViewModel: ObservableObject {
         }
     }
 
-    // map statt compactMap → ALLE User erscheinen, auch mit 0 Pkt
+    // Alle Member erscheinen — mit oder ohne Tipps, mind. 0 Punkte
     private func buildSpielwocheLeaderboard(
         betsByUser: [String: [CommunityBet]],
         matchDict: [Int: MatchData],
-        nameOverride: [Int: String]
+        nameOverride: [Int: String],
+        memberNames: [String: String]
     ) -> [UserPointsEntry] {
-        betsByUser.map { userId, userBets in
-            let displayName = shortName(userBets.first?.displayName ?? userId)
+        // Alle bekannten User-IDs: Member + User mit Bets
+        var allIds = Set(memberNames.keys)
+        allIds.formUnion(betsByUser.keys)
+
+        return allIds.map { userId in
+            let displayName = memberNames[userId]
+                ?? shortName(betsByUser[userId]?.first?.displayName ?? userId)
+            let userBets = betsByUser[userId] ?? []
+
             var leaguePointsMap: [String: Int] = [:]
             var leagueTipsMap:   [String: [MatchTipEntry]] = [:]
 
@@ -383,6 +396,23 @@ class CommunityPunkteViewModel: ObservableObject {
                                    points: leaguePointsMap.values.reduce(0, +),
                                    leagueBreakdown: breakdown)
         }
+    }
+
+    // MARK: Member-Namen laden
+
+    private func loadMemberDisplayNames() async -> [String: String] {
+        var names: [String: String] = [:]
+        await withTaskGroup(of: (String, String).self) { group in
+            for uid in community.memberIds {
+                group.addTask {
+                    let doc  = try? await self.db.collection("users").document(uid).getDocument()
+                    let name = doc?.data()?["displayName"] as? String ?? uid
+                    return (uid, name)
+                }
+            }
+            for await (uid, name) in group { names[uid] = name }
+        }
+        return names
     }
 
     // MARK: Firestore

@@ -215,32 +215,31 @@ struct CommunityPunkteView: View {
                             .font(.caption).foregroundColor(.gray).multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity).padding(.top, 60).padding(.horizontal)
-                } else if viewModel.spielwocheLeaderboard.isEmpty {
-                    // Spiele vorhanden, aber noch keine Tipps abgegeben
-                    emptyPlaceholder
                 } else {
-                    let winner = viewModel.spielwocheLeaderboard.first!
-                    HStack(spacing: 14) {
-                        Text("🏆").font(.system(size: 30))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Spielwoche-Sieger")
-                                .font(.caption.bold()).foregroundColor(.oneKickNeon.opacity(0.8))
-                            Text(winner.displayName)
-                                .font(.headline).bold().foregroundColor(.white)
+                    // Sieger-Banner nur wenn jemand wirklich Punkte hat
+                    if let winner = viewModel.spielwocheLeaderboard.first, winner.points > 0 {
+                        HStack(spacing: 14) {
+                            Text("🏆").font(.system(size: 30))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Spielwoche-Sieger")
+                                    .font(.caption.bold()).foregroundColor(.oneKickNeon.opacity(0.8))
+                                Text(winner.displayName)
+                                    .font(.headline).bold().foregroundColor(.white)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("\(winner.points)")
+                                    .font(.title2).bold().foregroundColor(.oneKickNeon)
+                                Text("Punkte").font(.caption2).foregroundColor(.gray)
+                            }
                         }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(winner.points)")
-                                .font(.title2).bold().foregroundColor(.oneKickNeon)
-                            Text("Punkte").font(.caption2).foregroundColor(.gray)
-                        }
+                        .padding(16)
+                        .background(Color.oneKickNeon.opacity(0.08))
+                        .cornerRadius(16)
+                        .overlay(RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.oneKickNeon.opacity(0.3), lineWidth: 1))
+                        .padding(.horizontal, 16).padding(.bottom, 4)
                     }
-                    .padding(16)
-                    .background(Color.oneKickNeon.opacity(0.08))
-                    .cornerRadius(16)
-                    .overlay(RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.oneKickNeon.opacity(0.3), lineWidth: 1))
-                    .padding(.horizontal, 16).padding(.bottom, 4)
 
                     tableHeader(label: viewModel.currentWeekLabel)
                     ForEach(Array(viewModel.spielwocheLeaderboard.enumerated()), id: \.element.id) { rank, entry in
