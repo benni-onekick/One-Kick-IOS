@@ -2,12 +2,12 @@
 //  SpielwochePlayerDetailView.swift
 //  One Kick
 //
-//  Detail-Ansicht eines Spielers für eine bestimmte Spielwoche.
+//  Spielwoche-Detail: erst Liga-Übersicht, dann Spiele pro Liga.
 //
 
 import SwiftUI
 
-// MARK: - Spielwoche-Detail eines Spielers
+// MARK: - Spielwoche-Detail eines Spielers (Liga-Übersicht)
 
 struct SpielwocheTipRow: Identifiable {
     var id: Int { match.fixture.id }
@@ -20,20 +20,23 @@ struct SpielwochePlayerDetailView: View {
     let weekMatchesByLeague: [String: [MatchData]]
     let isCurrentUser: Bool
 
-    private var sortedLeagues: [String] { weekMatchesByLeague.keys.sorted() }
+    private var sortedLeagues: [String] {
+        weekMatchesByLeague.keys.sorted()
+    }
 
-    private func rows(for leagueName: String) -> [SpielwocheTipRow] {
-        let matches = weekMatchesByLeague[leagueName] ?? []
-        let tips = entry.leagueBreakdown.first(where: { $0.leagueName == leagueName })?.matchTips ?? []
-        let tipMap = Dictionary(uniqueKeysWithValues: tips.map { ($0.id, $0) })
-        return matches.map { SpielwocheTipRow(match: $0, tip: tipMap[$0.fixture.id]) }
+    private func leaguePoints(for name: String) -> Int {
+        entry.leagueBreakdown.first(where: { $0.leagueName == name })?.points ?? 0
+    }
+
+    private func leagueTips(for name: String) -> [MatchTipEntry] {
+        entry.leagueBreakdown.first(where: { $0.leagueName == name })?.matchTips ?? []
     }
 
     var body: some View {
         ZStack {
             Color.oneKickBlack.ignoresSafeArea()
             ScrollView {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: 12) {
                     VStack(spacing: 4) {
                         Text(entry.displayName)
                             .font(.title2).bold()
@@ -43,16 +46,47 @@ struct SpielwochePlayerDetailView: View {
                     }
                     .padding(.vertical, 12)
 
-                    ForEach(sortedLeagues, id: \.self) { leagueName in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(leagueName)
-                                .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
-                                .tracking(1).textCase(.uppercase)
-                                .padding(.horizontal, 20)
+                    if sortedLeagues.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "calendar.badge.minus")
+                                .font(.system(size: 40)).foregroundColor(.gray)
+                            Text("Keine Spiele diese Woche")
+                                .font(.headline).foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity).padding(.top, 40)
+                    } else {
+                        ForEach(sortedLeagues, id: \.self) { leagueName in
+                            let pts     = leaguePoints(for: leagueName)
+                            let tips    = leagueTips(for: leagueName)
+                            let matches = weekMatchesByLeague[leagueName] ?? []
 
-                            ForEach(rows(for: leagueName)) { row in
-                                SpielwocheMatchRow(row: row, isCurrentUser: isCurrentUser)
+                            NavigationLink(destination: SpielwocheLeagueDetailView(
+                                leagueName: leagueName,
+                                matches: matches,
+                                tips: tips,
+                                isCurrentUser: isCurrentUser
+                            )) {
+                                HStack(spacing: 14) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(leagueName)
+                                            .font(.headline).foregroundColor(.white).lineLimit(1)
+                                        Text("\(matches.count) Spiele")
+                                            .font(.caption).foregroundColor(.gray)
+                                    }
+                                    Spacer()
+                                    Text("\(pts) Pkt")
+                                        .font(.title3.bold())
+                                        .foregroundColor(pts > 0 ? .oneKickNeon : .gray)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.bold()).foregroundColor(.gray)
+                                }
+                                .padding(16)
+                                .background(Color.oneKickDarkGray).cornerRadius(16)
+                                .overlay(RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.06), lineWidth: 1))
                             }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 16)
                         }
                     }
 
@@ -62,6 +96,45 @@ struct SpielwochePlayerDetailView: View {
             }
         }
         .navigationTitle(isCurrentUser ? "Meine Spielwoche" : entry.displayName)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Liga-Detail für Spielwoche (Spiele einer Liga)
+
+struct SpielwocheLeagueDetailView: View {
+    let leagueName: String
+    let matches: [MatchData]
+    let tips: [MatchTipEntry]
+    let isCurrentUser: Bool
+
+    private var rows: [SpielwocheTipRow] {
+        let tipMap = Dictionary(uniqueKeysWithValues: tips.map { ($0.id, $0) })
+        return matches.map { SpielwocheTipRow(match: $0, tip: tipMap[$0.fixture.id]) }
+    }
+
+    var body: some View {
+        ZStack {
+            Color.oneKickBlack.ignoresSafeArea()
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    if rows.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "sportscourt").font(.system(size: 40)).foregroundColor(.gray)
+                            Text("Keine Spiele").font(.headline).foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity).padding(.top, 60)
+                    } else {
+                        ForEach(rows) { row in
+                            SpielwocheMatchRow(row: row, isCurrentUser: isCurrentUser)
+                        }
+                    }
+                    Spacer(minLength: 80)
+                }
+                .padding(.top, 12)
+            }
+        }
+        .navigationTitle(leagueName)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

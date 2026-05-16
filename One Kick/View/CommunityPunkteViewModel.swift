@@ -23,6 +23,9 @@ class CommunityPunkteViewModel: ObservableObject {
     @Published var currentWeekLabel:      String               = ""
     @Published var weekMatchesByLeague:   [String: [MatchData]] = [:]
 
+    // Gesamt-Tab
+    @Published var isLoadingGesamt     = false
+
     // Bonus-Tab
     @Published var bonusEntries:        [UserBonusEntry]   = []
     @Published var bonusLockedLeagues:  Set<String>        = []
@@ -149,36 +152,28 @@ class CommunityPunkteViewModel: ObservableObject {
             currentWeekLabel = "\(df.string(from: interval.start)) – \(df.string(from: sunday))"
         }
 
-        var currentMatches:    [MatchData] = []
-        var fullSeasonMatches: [MatchData] = []
-        var weekMatches:       [MatchData] = []
+        // Parallel: aktuelle Runde + Wochenspiele (wenige Calls, schnell)
+        var currentMatches: [MatchData] = []
+        var weekMatches:    [MatchData] = []
 
-        let seasonStart = "\(APIConfig.currentSeason)-08-01"
-        await withTaskGroup(of: (tag: String, name: String, matches: [MatchData]).self) { group in
+        await withTaskGroup(of: (tag: String, matches: [MatchData]).self) { group in
             for leagueName in community.activeLeagues {
                 let lid = LeagueMapper.getID(for: leagueName)
                 let max = LeagueMapper.getMaxMatchday(for: leagueName)
                 if max > 0 {
                     group.addTask {
                         let r = await self.api.determineDisplayRoundWithMatches(for: lid, maxMatchday: max)
-                        return ("current", leagueName, r.matches)
+                        return ("current", r.matches)
                     }
                 }
                 group.addTask {
-                    let m = await self.api.fetchMatchesByDateRange(for: lid, from: seasonStart, to: toStr)
-                    return ("season", leagueName, m)
-                }
-                group.addTask {
                     let m = await self.api.fetchMatchesByDateRange(for: lid, from: weekFromStr, to: weekToStr)
-                    return ("week", leagueName, m)
+                    return ("week", m)
                 }
             }
             for await r in group {
-                switch r.tag {
-                case "current": currentMatches    += r.matches
-                case "season":  fullSeasonMatches += r.matches
-                default:        weekMatches       += r.matches
-                }
+                if r.tag == "current" { currentMatches += r.matches }
+                else                  { weekMatches    += r.matches }
             }
         }
 
@@ -199,18 +194,48 @@ class CommunityPunkteViewModel: ObservableObject {
         }
         weekMatchesByLeague = wml.mapValues { $0.sorted { $0.fixture.date < $1.fixture.date } }
 
-        var totalDict: [Int: MatchData] = [:]
-        for m in fullSeasonMatches { totalDict[m.fixture.id] = m }
-        for m in currentMatches    { totalDict[m.fixture.id] = m }
-
         spielwocheLeaderboard = buildSpielwocheLeaderboard(
             betsByUser: betsByUser, matchDict: weekDict,
             nameOverride: leagueIdToDisplayName
         ).sorted { $0.points > $1.points }
 
+        // Gesamt-Leaderboard wird separat geladen (sequenziell, vermeidet Rate-Limiting)
+        totalLeaderboard = []
+        Task { await loadGesamtData() }
+    }
+
+    // Lädt Saisonspiele sequenziell um API-Rate-Limits zu vermeiden
+    func loadGesamtData() async {
+        guard !cachedBetsByUser.isEmpty else { return }
+        isLoadingGesamt = true
+        defer { isLoadingGesamt = false }
+
+        let iso = ISO8601DateFormatter()
+        let seasonStart = "\(APIConfig.currentSeason)-08-01"
+        let toStr = String(iso.string(from: Date()).prefix(10))
+
+        var fullSeasonMatches: [MatchData] = []
+        var currentMatches:    [MatchData] = []
+
+        for leagueName in community.activeLeagues {
+            let lid = LeagueMapper.getID(for: leagueName)
+            let m = await api.fetchMatchesByDateRange(for: lid, from: seasonStart, to: toStr)
+            fullSeasonMatches += m
+
+            let max = LeagueMapper.getMaxMatchday(for: leagueName)
+            if max > 0 {
+                let r = await api.determineDisplayRoundWithMatches(for: lid, maxMatchday: max)
+                currentMatches += r.matches
+            }
+        }
+
+        var totalDict: [Int: MatchData] = [:]
+        for m in fullSeasonMatches { totalDict[m.fixture.id] = m }
+        for m in currentMatches    { totalDict[m.fixture.id] = m }
+
         totalLeaderboard = buildLeaderboard(
-            betsByUser: betsByUser, matchDict: totalDict,
-            nameOverride: leagueIdToDisplayName
+            betsByUser: cachedBetsByUser, matchDict: totalDict,
+            nameOverride: cachedLeagueIdToDisplayName
         ).sorted { $0.points > $1.points }
     }
 
@@ -284,7 +309,7 @@ class CommunityPunkteViewModel: ObservableObject {
         matchDict: [Int: MatchData],
         nameOverride: [Int: String]
     ) -> [UserPointsEntry] {
-        betsByUser.compactMap { userId, userBets in
+        betsByUser.map { userId, userBets in
             let displayName = shortName(userBets.first?.displayName ?? userId)
             var leaguePointsMap: [String: Int] = [:]
             var leagueTipsMap:   [String: [MatchTipEntry]] = [:]
@@ -301,8 +326,6 @@ class CommunityPunkteViewModel: ObservableObject {
                                   points: pts, isStarted: isStarted)
                 )
             }
-
-            guard !leaguePointsMap.isEmpty else { return nil }
 
             let breakdown = leaguePointsMap.map { name, pts in
                 LeaguePointsEntry(id: name, leagueName: name, points: pts,

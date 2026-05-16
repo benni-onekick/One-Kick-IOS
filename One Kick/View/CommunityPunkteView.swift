@@ -92,19 +92,36 @@ struct CommunityPunkteView: View {
 
     @ViewBuilder
     private var contentView: some View {
-        if viewModel.isLoading {
-            Spacer()
-            ProgressView().tint(.oneKickNeon)
-            Text("Punkte werden berechnet...").font(.caption).foregroundColor(.gray).padding(.top, 8)
-            Spacer()
-        } else {
-            switch selectedTab {
-            case 0: spielwocheTab
-            case 1: ligenTab
-            case 2: leaderboardView(entries: viewModel.totalLeaderboard, label: "Gesamte Saison")
-            default: bonusTab
+        switch selectedTab {
+        case 0:
+            if viewModel.isLoading {
+                loadingPlaceholder("Punkte werden berechnet...")
+            } else {
+                spielwocheTab
             }
+        case 1:
+            if viewModel.isLoading || viewModel.isLoadingGesamt {
+                loadingPlaceholder("Ligen werden geladen...")
+            } else {
+                ligenTab
+            }
+        case 2:
+            if viewModel.isLoading || viewModel.isLoadingGesamt {
+                loadingPlaceholder("Saison-Punkte werden geladen...")
+            } else {
+                leaderboardView(entries: viewModel.totalLeaderboard, label: "Gesamte Saison")
+            }
+        default:
+            bonusTab
         }
+    }
+
+    @ViewBuilder
+    private func loadingPlaceholder(_ text: String) -> some View {
+        Spacer()
+        ProgressView().tint(.oneKickNeon)
+        Text(text).font(.caption).foregroundColor(.gray).padding(.top, 8)
+        Spacer()
     }
 
     // MARK: Leaderboard
