@@ -44,8 +44,8 @@ class BonusBetManager {
         return (doc.data()?["answers"] as? [String: String]) ?? [:]
     }
 
-    /// Gibt alle Mitglieder zurück, die mindestens einen Match-Tipp abgegeben haben (email + userId).
-    func loadMembersFromBets(communityId: String) async -> [(userId: String, email: String)] {
+    /// Gibt alle Mitglieder zurück (userId + Anzeigename), alphabetisch sortiert.
+    func loadMembersFromBets(communityId: String) async -> [(userId: String, displayName: String)] {
         guard let snapshot = try? await db.collection("communities")
             .document(communityId)
             .collection("bets")
@@ -53,16 +53,24 @@ class BonusBetManager {
         else { return [] }
 
         var seen = Set<String>()
-        var members: [(userId: String, email: String)] = []
+        var userIds: [String] = []
         for doc in snapshot.documents {
-            let data = doc.data()
-            guard let userId = data["userId"] as? String,
-                  let email  = data["email"]  as? String,
+            guard let userId = doc.data()["userId"] as? String,
                   seen.insert(userId).inserted
             else { continue }
-            members.append((userId: userId, email: email))
+            userIds.append(userId)
         }
-        return members.sorted { $0.email < $1.email }
+
+        // Display-Namen aus users/{uid} laden
+        var members: [(userId: String, displayName: String)] = []
+        for userId in userIds {
+            let doc = try? await db.collection("users").document(userId).getDocument()
+            let name = doc?.data()?["displayName"] as? String
+                ?? doc?.data()?["email"] as? String
+                ?? userId
+            members.append((userId: userId, displayName: name))
+        }
+        return members.sorted { $0.displayName.localizedCompare($1.displayName) == .orderedAscending }
     }
 }
 
@@ -72,7 +80,7 @@ struct AdminBonusFillView: View {
     let community: CommunityModel
     @Environment(\.dismiss) var dismiss
 
-    @State private var members: [(userId: String, email: String)] = []
+    @State private var members: [(userId: String, displayName: String)] = []
     @State private var isLoading = true
 
     private let bonusManager = BonusBetManager()
@@ -103,14 +111,14 @@ struct AdminBonusFillView: View {
                             .foregroundColor(.gray).font(.caption).bold()) {
                             ForEach(members, id: \.userId) { member in
                                 NavigationLink(destination: MemberBonusEditView(
-                                    community:        community,
-                                    memberId:         member.userId,
-                                    memberEmail:      member.email,
-                                    activeLeagues:    activeLeagues,
+                                    community:         community,
+                                    memberId:          member.userId,
+                                    memberDisplayName: member.displayName,
+                                    activeLeagues:     activeLeagues,
                                     activeCategorySet: activeCategorySet
                                 )) {
                                     VStack(alignment: .leading, spacing: 3) {
-                                        Text(member.email)
+                                        Text(member.displayName)
                                             .font(.subheadline).foregroundColor(.white)
                                         Text("Bonus-Tipps nachtragen")
                                             .font(.caption).foregroundColor(.oneKickNeon)
@@ -146,7 +154,7 @@ struct AdminBonusFillView: View {
 struct MemberBonusEditView: View {
     let community: CommunityModel
     let memberId: String
-    let memberEmail: String
+    let memberDisplayName: String
     let activeLeagues: [String]
     let activeCategorySet: Set<String>
 
@@ -174,9 +182,7 @@ struct MemberBonusEditView: View {
         return cats.filter { activeCategorySet.contains($0) }
     }
 
-    private var shortName: String {
-        memberEmail.components(separatedBy: "@").first ?? memberEmail
-    }
+    private var shortName: String { memberDisplayName }
 
     var body: some View {
         ZStack {
@@ -193,7 +199,7 @@ struct MemberBonusEditView: View {
                             Image(systemName: "person.circle.fill")
                                 .font(.system(size: 34)).foregroundColor(.oneKickNeon)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(memberEmail)
+                                Text(memberDisplayName)
                                     .font(.subheadline).bold().foregroundColor(.white).lineLimit(1)
                                 Text("Tipps werden stellvertretend eingetragen")
                                     .font(.caption).foregroundColor(.gray)
