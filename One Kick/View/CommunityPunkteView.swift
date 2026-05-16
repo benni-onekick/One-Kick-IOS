@@ -178,15 +178,11 @@ struct CommunityPunkteView: View {
 
                     Spacer()
 
-                    VStack(spacing: 2) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "calendar.badge.clock")
-                                .font(.system(size: 12)).foregroundColor(.oneKickNeon)
-                            Text(viewModel.currentWeekLabel)
-                                .font(.system(size: 12, weight: .semibold)).foregroundColor(.oneKickNeon)
-                        }
-                        Text(weekOffset == 0 ? "Aktuelle Woche" : "KW \(-weekOffset) zurück")
-                            .font(.system(size: 10)).foregroundColor(.gray)
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.system(size: 12)).foregroundColor(.oneKickNeon)
+                        Text(viewModel.currentWeekLabel.isEmpty ? "Lädt…" : viewModel.currentWeekLabel)
+                            .font(.system(size: 12, weight: .semibold)).foregroundColor(.oneKickNeon)
                     }
 
                     Spacer()
@@ -208,7 +204,8 @@ struct CommunityPunkteView: View {
 
                 if viewModel.isLoadingSpielwoche {
                     ProgressView().tint(.oneKickNeon).padding(.top, 40)
-                } else if viewModel.spielwocheLeaderboard.isEmpty {
+                } else if viewModel.weekMatchesByLeague.isEmpty {
+                    // Wirklich keine Spiele in dieser Woche
                     VStack(spacing: 12) {
                         Image(systemName: "calendar.badge.minus")
                             .font(.system(size: 40)).foregroundColor(.gray)
@@ -218,6 +215,9 @@ struct CommunityPunkteView: View {
                             .font(.caption).foregroundColor(.gray).multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity).padding(.top, 60).padding(.horizontal)
+                } else if viewModel.spielwocheLeaderboard.isEmpty {
+                    // Spiele vorhanden, aber noch keine Tipps abgegeben
+                    emptyPlaceholder
                 } else {
                     let winner = viewModel.spielwocheLeaderboard.first!
                     HStack(spacing: 14) {
