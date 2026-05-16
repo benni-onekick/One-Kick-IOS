@@ -62,34 +62,17 @@ struct CommunityView: View {
     var mainContentView: some View {
         VStack(spacing: 0) {
             
-            // --- HEADER (Das Vorbild für die anderen Seiten) ---
-            VStack(spacing: 0) {
-                HStack {
-                    Text("Community")
-                        .font(.system(size: 40, weight: .black))
-                        .foregroundColor(.white)
-                    Spacer()
-                    // Profil Button Oben Rechts
-                    Button(action: { showProfileSheet = true }) {
-                        Image(systemName: "person.crop.circle")
-                            .font(.system(size: 30))
-                            .foregroundColor(.white)
-                    }
+            // --- HEADER ---
+            OneKickHeader(onProfile: { showProfileSheet = true })
+            HStack(alignment: .center) {
+                Text("Deine Übersicht").font(.subheadline).fontWeight(.bold).foregroundColor(.gray)
+                Spacer()
+                Button(action: { showMenu = true }) {
+                    HStack(spacing: 4) { Image(systemName: "plus"); Text("Hinzufügen") }
+                        .font(.caption.bold()).foregroundColor(.oneKickBlack).padding(.vertical, 8).padding(.horizontal, 14).background(Color.oneKickNeon).clipShape(Capsule())
                 }
-                .padding(.horizontal)
-                .padding(.top, 10)
-                
-                // Sub-Header mit Hinzufügen Button
-                HStack(alignment: .center) {
-                    Text("Deine Übersicht").font(.title3).fontWeight(.bold).foregroundColor(.gray)
-                    Spacer()
-                    Button(action: { showMenu = true }) {
-                        HStack(spacing: 4) { Image(systemName: "plus"); Text("Hinzufügen") }
-                            .font(.caption.bold()).foregroundColor(.oneKickBlack).padding(.vertical, 8).padding(.horizontal, 14).background(Color.oneKickNeon).clipShape(Capsule())
-                    }
-                }
-                .padding(.horizontal).padding(.top, 5).padding(.bottom, 15)
             }
+            .padding(.horizontal).padding(.bottom, 10)
             
             // LISTE
             ScrollView {
@@ -124,7 +107,17 @@ struct CommunityView: View {
 // Hilfs-Strukturen (identisch wie vorher)
 struct CommunityEmptyStateView: View {
     var onAction: () -> Void; var onProfile: () -> Void
-    var body: some View { VStack { HStack { Spacer(); Button(action: onProfile) { Image(systemName: "person.crop.circle").font(.system(size: 30)).foregroundColor(.white) } }.padding(); Spacer(); Image(systemName: "person.3.sequence.fill").font(.system(size: 80)).foregroundColor(.oneKickNeon).padding(.bottom, 20); Text("Willkommen bei One Kick").font(.largeTitle).bold().foregroundColor(.white); Text("Erstelle eine Liga!").foregroundColor(.gray).padding(.top, 10); Spacer(); Button(action: onAction) { Text("Loslegen").bold().foregroundColor(.black).frame(maxWidth: .infinity).padding().background(Color.oneKickNeon).cornerRadius(15) }.padding(40) } }
+    var body: some View {
+        VStack {
+            OneKickHeader(onProfile: onProfile)
+            Spacer()
+            Image(systemName: "person.3.sequence.fill").font(.system(size: 80)).foregroundColor(.oneKickNeon).padding(.bottom, 20)
+            Text("Willkommen bei One Kick").font(.largeTitle).bold().foregroundColor(.white)
+            Text("Erstelle eine Liga!").foregroundColor(.gray).padding(.top, 10)
+            Spacer()
+            Button(action: onAction) { Text("Loslegen").bold().foregroundColor(.black).frame(maxWidth: .infinity).padding().background(Color.oneKickNeon).cornerRadius(15) }.padding(40)
+        }
+    }
 }
 struct CommunitySectionHeader: View { let title: String; var body: some View { Text(title.uppercased()).font(.caption).bold().foregroundColor(.gray) } }
 struct CommunityRowCard: View { let community: CommunityModel; var body: some View { HStack { ZStack { Circle().fill(Color.oneKickNeon).frame(width: 45, height: 45); Image(systemName: "person.3.fill").font(.caption).bold().foregroundColor(.black) }; VStack(alignment: .leading) { Text(community.name).bold().foregroundColor(.white); Text("\(community.members) Tipper").font(.caption).foregroundColor(.gray) }; Spacer(); Text("#1").font(.title3).fontWeight(.black).foregroundColor(.white) }.padding(16).background(Color(UIColor.systemGray6).opacity(0.12)).cornerRadius(18) } }

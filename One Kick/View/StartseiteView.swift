@@ -118,12 +118,18 @@ class StartseiteViewModel: ObservableObject {
 struct StartseiteView: View {
     @StateObject private var viewModel = StartseiteViewModel()
     @EnvironmentObject var communityManager: CommunityManager
+    @EnvironmentObject var authManager: AuthManager
 
     @State private var showBettingPopup = false
     @State private var selectedTip: OpenTipItem?
     @State private var showProfileSheet = false
 
     private var hasCommunities: Bool { !communityManager.communities.isEmpty }
+
+    private var greetingName: String {
+        if let name = authManager.displayName, !name.isEmpty { return ", \(name)" }
+        return ""
+    }
 
     var body: some View {
         ZStack {
@@ -132,17 +138,13 @@ struct StartseiteView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
 
-                    HStack(alignment: .top) {
-                        Text("Willkommen zurück!")
-                            .font(.system(size: 40, weight: .black)).foregroundColor(.white)
-                        Spacer()
-                        Button(action: { showProfileSheet = true }) {
-                            Image(systemName: "person.crop.circle")
-                                .font(.system(size: 30))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .padding(.horizontal).padding(.top, 8)
+                    OneKickHeader(onProfile: { showProfileSheet = true })
+
+                    Text("Willkommen zurück\(greetingName)!")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal)
+                        .padding(.top, -8)
 
                     // Offene Tipps nur anzeigen wenn in einer Community
                     if hasCommunities {

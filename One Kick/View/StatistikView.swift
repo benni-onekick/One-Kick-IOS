@@ -27,39 +27,19 @@ struct StatistikView: View {
                 
                 VStack(spacing: 0) {
                     
-                    // --- HEADER (Konsistent) ---
-                    VStack(spacing: 0) {
-                        HStack {
-                            Text("Statistik")
-                                .font(.system(size: 40, weight: .black))
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            
-                            // Profil Button (Oben Rechts)
-                            Button(action: {
-                                HapticManager.instance.impact(style: .light)
-                                showProfileSheet = true
-                            }) {
-                                Image(systemName: "person.crop.circle")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 10)
-                        
-                        // Sub-Header
-                        HStack {
-                            Text("Deine Performance")
-                                .font(.title3).fontWeight(.bold)
-                                .foregroundColor(.gray)
-                            Spacer()
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 5)
-                        .padding(.bottom, 15)
+                    // --- HEADER ---
+                    OneKickHeader(onProfile: {
+                        HapticManager.instance.impact(style: .light)
+                        showProfileSheet = true
+                    })
+                    HStack {
+                        Text("Deine Performance")
+                            .font(.subheadline).fontWeight(.bold)
+                            .foregroundColor(.gray)
+                        Spacer()
                     }
+                    .padding(.horizontal)
+                    .padding(.bottom, 10)
                     
                     // --- CONTENT ---
                     ScrollView {

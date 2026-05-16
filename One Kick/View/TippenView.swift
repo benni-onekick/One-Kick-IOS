@@ -188,23 +188,10 @@ struct TippenView: View {
                 Color.oneKickBlack.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    HStack {
-                        Text("Meine Tipps")
-                            .font(.system(size: 40, weight: .black))
-                            .foregroundColor(.white)
-                        Spacer()
-                        Button(action: {
-                            HapticManager.instance.impact(style: .light)
-                            showProfileSheet = true
-                        }) {
-                            Image(systemName: "person.crop.circle")
-                                .font(.system(size: 30))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 10)
-                    .padding(.bottom, 20)
+                    OneKickHeader(onProfile: {
+                        HapticManager.instance.impact(style: .light)
+                        showProfileSheet = true
+                    })
 
                     if manager.communities.isEmpty {
                         EmptyStateView()
