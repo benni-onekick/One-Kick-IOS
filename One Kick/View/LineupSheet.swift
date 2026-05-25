@@ -11,6 +11,7 @@ struct LineupSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var lineups: [TeamLineup] = []
     @State private var isLoading = true
+    @State private var selectedTab = 0
 
     private let service = APIFootballService()
 
@@ -32,29 +33,44 @@ struct LineupSheet: View {
                             .multilineTextAlignment(.center).padding(.horizontal, 32)
                     }
                 } else {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            HStack(spacing: 12) {
-                                Text(match.teams.home.name)
-                                    .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
-                                    .multilineTextAlignment(.trailing)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
-                                    .lineLimit(2)
-                                Text("vs").font(.caption).foregroundColor(.gray)
-                                Text(match.teams.away.name)
-                                    .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .lineLimit(2)
+                    VStack(spacing: 0) {
+                        // Team-Tabs
+                        HStack(spacing: 6) {
+                            ForEach(lineups.indices, id: \.self) { i in
+                                Button(action: {
+                                    HapticManager.instance.impact(style: .light)
+                                    withAnimation(.easeInOut(duration: 0.2)) { selectedTab = i }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        AsyncImage(url: URL(string: lineups[i].team.logo)) { img in
+                                            img.resizable().scaledToFit()
+                                        } placeholder: { Color.clear }
+                                        .frame(width: 18, height: 18)
+
+                                        Text(lineups[i].team.name)
+                                            .font(.system(size: 12, weight: .bold))
+                                            .lineLimit(1)
+                                            .foregroundColor(selectedTab == i ? .black : .gray)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 9)
+                                    .background(selectedTab == i ? Color.oneKickNeon : Color.oneKickDarkGray.opacity(0.6))
+                                    .cornerRadius(22)
+                                }
                             }
-                            .padding(.horizontal, 20)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+
+                        // Aufstellung des gewählten Teams
+                        ScrollView {
+                            VStack(spacing: 24) {
+                                if selectedTab < lineups.count {
+                                    LineupTeamSection(lineup: lineups[selectedTab])
+                                }
+                                Spacer(minLength: 40)
+                            }
                             .padding(.top, 8)
-
-                            ForEach(lineups) { lineup in
-                                LineupTeamSection(lineup: lineup)
-                            }
-
-                            Spacer(minLength: 40)
                         }
                     }
                 }
@@ -91,6 +107,7 @@ struct LineupTeamSection: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(lineup.team.name)
                         .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
+                        .lineLimit(1).minimumScaleFactor(0.7)
                     if let formation = lineup.formation {
                         Text(formation)
                             .font(.caption).foregroundColor(.oneKickNeon)

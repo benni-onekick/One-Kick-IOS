@@ -102,7 +102,7 @@ struct CommunityStartMenu: View {
             // ----------------------------------------
             
             .sheet(isPresented: $showJoinCommunity) {
-                JoinCommunityView()
+                JoinCommunitySheet().environmentObject(manager)
             }
         }
     }

@@ -134,7 +134,7 @@ struct NewsView: View {
 
     private var tabPicker: some View {
         HStack(spacing: 4) {
-            ForEach(NewsTab.allCases, id: \.self) { tab in
+            ForEach(NewsTab.allCases.filter { $0 != .injuries }, id: \.self) { tab in
                 Button(action: {
                     HapticManager.instance.impact(style: .light)
                     selectedTab = tab
@@ -171,11 +171,31 @@ struct NewsView: View {
             Spacer()
 
             if favoritesOnly && !hasFavorites {
-                Text("Keine Favoriten gesetzt")
-                    .font(.system(size: 11))
-                    .foregroundColor(.orange)
+                NavigationLink(destination: FavoriteSettingsView()) {
+                    HStack(spacing: 4) {
+                        Text("Keine Favoriten gesetzt")
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.orange.opacity(0.7))
+                    }
+                }
+                .buttonStyle(.plain)
+            } else if favoritesOnly {
+                NavigationLink(destination: FavoriteSettingsView()) {
+                    HStack(spacing: 4) {
+                        Text("Lieblingsligen & -teams")
+                            .font(.system(size: 11))
+                            .foregroundColor(.oneKickNeon.opacity(0.8))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.oneKickNeon.opacity(0.5))
+                    }
+                }
+                .buttonStyle(.plain)
             } else {
-                Text(favoritesOnly ? "Lieblingsligen & -teams" : "Alle aktiven Ligen")
+                Text("Alle aktiven Ligen")
                     .font(.system(size: 11))
                     .foregroundColor(.gray.opacity(0.6))
             }
@@ -356,7 +376,9 @@ struct NewsCard: View {
             if let imageUrl = article.urlToImage, let url = URL(string: imageUrl) {
                 AsyncImage(url: url) { phase in
                     if let image = phase.image {
-                        image.resizable().scaledToFill().frame(height: 180).clipped()
+                        image.resizable().scaledToFill()
+                            .frame(maxWidth: .infinity, minHeight: 180, maxHeight: 180)
+                            .clipped()
                     } else {
                         Color.gray.opacity(0.2).frame(height: 120)
                     }

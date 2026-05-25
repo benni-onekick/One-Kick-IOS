@@ -7,7 +7,25 @@
 		<key>One Kick.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
+		<key>TipNotificationExtension.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
 			<integer>0</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>B307BD4C2FBB0D6400E776C0</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>B3FBDA372EF02BCC00198DD6</key>
+		<dict>
+			<key>primary</key>
+			<true/>
 		</dict>
 	</dict>
 </dict>

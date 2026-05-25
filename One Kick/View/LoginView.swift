@@ -17,6 +17,12 @@ struct LoginView: View {
     @State private var isLoading    = false
     @State private var checkTask:   Task<Void, Never>?
 
+    @State private var showResetSheet   = false
+    @State private var resetEmail       = ""
+    @State private var resetSent        = false
+    @State private var resetError:      String?
+    @State private var resetLoading     = false
+
     var body: some View {
         ZStack {
             Color.oneKickBlack.ignoresSafeArea()
@@ -33,7 +39,6 @@ struct LoginView: View {
                     .padding(.top, 60)
 
                     VStack(spacing: 15) {
-                        // Anzeigename nur bei Registrierung
                         if isRegistering {
                             VStack(alignment: .leading, spacing: 4) {
                                 TextField("Anzeigename (wird öffentlich angezeigt)", text: $displayName)
@@ -65,9 +70,7 @@ struct LoginView: View {
                                     }
 
                                 if let ne = nameError {
-                                    Text(ne)
-                                        .font(.caption).foregroundColor(.red)
-                                        .padding(.horizontal, 4)
+                                    Text(ne).font(.caption).foregroundColor(.red).padding(.horizontal, 4)
                                 }
                             }
                         }
@@ -89,6 +92,21 @@ struct LoginView: View {
                             .foregroundColor(.white)
                             .overlay(RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.white.opacity(0.1), lineWidth: 1))
+
+                        // Passwort vergessen (nur im Login-Modus)
+                        if !isRegistering {
+                            HStack {
+                                Spacer()
+                                Button("Passwort vergessen?") {
+                                    resetEmail = email
+                                    resetSent  = false
+                                    resetError = nil
+                                    showResetSheet = true
+                                }
+                                .font(.caption).foregroundColor(.gray)
+                            }
+                            .padding(.horizontal, 4)
+                        }
                     }
                     .padding(.horizontal, 20)
 
@@ -134,7 +152,82 @@ struct LoginView: View {
                 }
             }
         }
+        .sheet(isPresented: $showResetSheet) {
+            passwordResetSheet
+        }
     }
+
+    // MARK: - Passwort-Reset Sheet
+
+    private var passwordResetSheet: some View {
+        ZStack {
+            Color.oneKickBlack.ignoresSafeArea()
+            VStack(spacing: 24) {
+                VStack(spacing: 6) {
+                    Image(systemName: "lock.rotation")
+                        .font(.system(size: 40)).foregroundColor(.oneKickNeon)
+                    Text("Passwort zurücksetzen")
+                        .font(.title3.bold()).foregroundColor(.white)
+                    Text("Gib deine E-Mail-Adresse ein. Du erhältst einen Link zum Zurücksetzen deines Passworts.")
+                        .font(.caption).foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                .padding(.top, 40)
+
+                if resetSent {
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 50)).foregroundColor(.oneKickNeon)
+                        Text("E-Mail gesendet!")
+                            .font(.headline.bold()).foregroundColor(.white)
+                        Text("Schau in dein Postfach und klicke auf den Link, um ein neues Passwort festzulegen.")
+                            .font(.caption).foregroundColor(.gray)
+                            .multilineTextAlignment(.center).padding(.horizontal)
+                    }
+                } else {
+                    VStack(spacing: 12) {
+                        TextField("E-Mail Adresse", text: $resetEmail)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                            .padding()
+                            .background(Color.oneKickDarkGray)
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                            .overlay(RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 1))
+                            .padding(.horizontal, 20)
+
+                        if let re = resetError {
+                            Text(re).font(.caption).foregroundColor(.red)
+                                .multilineTextAlignment(.center).padding(.horizontal)
+                        }
+
+                        Button(action: sendReset) {
+                            if resetLoading {
+                                ProgressView().tint(.black)
+                            } else {
+                                Text("Link senden")
+                                    .font(.headline.bold())
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(resetEmail.isEmpty ? Color.oneKickNeon.opacity(0.4) : Color.oneKickNeon)
+                        .foregroundColor(.black)
+                        .cornerRadius(15)
+                        .padding(.horizontal, 20)
+                        .disabled(resetEmail.isEmpty || resetLoading)
+                    }
+                }
+
+                Spacer()
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    // MARK: - Helpers
 
     private var canSubmit: Bool {
         if isRegistering {
@@ -159,6 +252,19 @@ struct LoginView: View {
             authManager.signIn(email: email, pass: password) { error in
                 isLoading = false
                 if let error { errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    private func sendReset() {
+        resetLoading = true
+        resetError   = nil
+        authManager.sendPasswordReset(email: resetEmail) { err in
+            resetLoading = false
+            if let err {
+                resetError = err
+            } else {
+                resetSent = true
             }
         }
     }

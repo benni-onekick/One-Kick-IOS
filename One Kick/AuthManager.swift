@@ -24,11 +24,13 @@ class AuthManager: ObservableObject {
                 self.isEmailVerified = user.isEmailVerified
                 self.userEmail = user.email
                 Task { await self.loadDisplayName(uid: user.uid) }
+                UserSettings.shared.loadFromFirebase(uid: user.uid)
             } else {
                 self.isAuthenticated   = false
                 self.isEmailVerified   = false
                 self.userEmail         = nil
                 self.displayName       = nil
+                UserSettings.shared.clearPhoto()
             }
         }
     }
@@ -120,7 +122,8 @@ class AuthManager: ObservableObject {
             throw NSError(domain: "AuthManager", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "Nicht eingeloggt."])
         }
-        let available = await checkDisplayNameAvailable(newName)
+        // Eigenen aktuellen Namen nicht als "vergeben" werten
+        let available = await checkDisplayNameAvailable(newName, excludingUid: user.uid)
         guard available else {
             throw NSError(domain: "AuthManager", code: -2,
                           userInfo: [NSLocalizedDescriptionKey: "Dieser Name ist bereits vergeben."])
@@ -131,9 +134,11 @@ class AuthManager: ObservableObject {
             try? await db.collection("usernames").document(old.lowercased()).delete()
         }
 
-        // Firestore + Reservierung
-        try await db.collection("users").document(user.uid).updateData(["displayName": newName])
-        try await db.collection("usernames").document(newName.lowercased()).setData(["uid": user.uid])
+        // setData(merge: true) statt updateData – erstellt Dokument falls noch keins existiert
+        try await db.collection("users").document(user.uid)
+            .setData(["displayName": newName, "email": user.email ?? ""], merge: true)
+        try await db.collection("usernames")
+            .document(newName.lowercased()).setData(["uid": user.uid])
 
         // Firebase Auth Profil
         let req = user.createProfileChangeRequest()
@@ -144,11 +149,19 @@ class AuthManager: ObservableObject {
     }
 
     // MARK: - Anzeigename prüfen (true = verfügbar)
-    func checkDisplayNameAvailable(_ name: String) async -> Bool {
+    // excludingUid: eigener Name zählt nicht als "vergeben"
+    func checkDisplayNameAvailable(_ name: String, excludingUid: String? = nil) async -> Bool {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        let doc = try? await db.collection("usernames")
-            .document(name.lowercased()).getDocument()
-        return !(doc?.exists ?? false)
+        guard let doc = try? await db.collection("usernames")
+            .document(name.lowercased()).getDocument(), doc.exists else {
+            return true
+        }
+        if let uid = excludingUid,
+           let existingUid = doc.data()?["uid"] as? String,
+           existingUid == uid {
+            return true
+        }
+        return false
     }
 
     // MARK: - Anzeigename aus Firestore laden

@@ -20,6 +20,7 @@ let allBonusCategories: [String] = [
     "Finalisten tippen",
     "Halbfinalisten tippen",
     "Torschützenkönig",
+    "Meiste Vorlagen",
     "Meiste Tore (Team)",
     "Meiste Gegentore",
     "Endtabelle",
@@ -28,13 +29,23 @@ let allBonusCategories: [String] = [
     "Meiste Zu-Null-Spiele"
 ]
 
-private let koLeagueNames: Set<String> = [
+let koLeagueNames: Set<String> = [
     "Champions League", "Europa League", "Conference League",
     "DFB-Pokal", "FA Cup", "Copa del Rey", "Coppa Italia", "Coupe de France",
     "Weltmeisterschaft", "Europameisterschaft", "Nations League",
     "WM Qualifikation", "EM Qualifikation",
     "Frauen Champions League", "Frauen WM", "Frauen EM"
 ]
+
+/// Gibt die aktiven Bonus-Kategorien für eine Liga zurück (gefiltert nach activeCategorySet).
+func bonusCategoriesForLeague(_ leagueName: String, activeCategorySet: Set<String>) -> [String] {
+    let isKO = koLeagueNames.contains(leagueName)
+    var cats: [String] = isKO
+        ? ["Finalisten tippen", "Halbfinalisten tippen"]
+        : ["Torschützenkönig", "Meiste Vorlagen", "Meiste Tore (Team)", "Meiste Gegentore", "Endtabelle"]
+    cats += ["Meiste Aluminium-Treffer", "Meiste Karten", "Meiste Zu-Null-Spiele"]
+    return cats.filter { activeCategorySet.contains($0) }
+}
 
 struct BonusLeagueCard: View {
     let leagueName: String
@@ -52,6 +63,7 @@ struct BonusLeagueCard: View {
             result.append(("medal.fill",            "Halbfinalisten tippen",  Color(white: 0.75)))
         } else {
             result.append(("person.fill",           "Torschützenkönig",       .oneKickNeon))
+            result.append(("figure.stand",          "Meiste Vorlagen",        .cyan))
             result.append(("arrow.up.right",        "Meiste Tore (Team)",     .orange))
             result.append(("arrow.down.right",      "Meiste Gegentore",       .red.opacity(0.8)))
             result.append(("tablecells",            "Endtabelle",     .blue.opacity(0.8)))
@@ -140,7 +152,7 @@ struct BonusAnswerCard: View {
     private var categories: [String] {
         var cats: [String] = isKO
             ? ["Finalisten tippen", "Halbfinalisten tippen"]
-            : ["Torschützenkönig", "Meiste Tore (Team)", "Meiste Gegentore", "Endtabelle"]
+            : ["Torschützenkönig", "Meiste Vorlagen", "Meiste Tore (Team)", "Meiste Gegentore", "Endtabelle"]
         cats += ["Meiste Aluminium-Treffer", "Meiste Karten", "Meiste Zu-Null-Spiele"]
         guard let enabled = enabledCategories else { return cats }
         return cats.filter { enabled.contains($0) }

@@ -22,7 +22,10 @@ struct UserPointsEntry: Identifiable {
     let id: String
     let displayName: String
     var points: Int
+    var bonusPoints: Int = 0
+    var totalPoints: Int { points + bonusPoints }
     var leagueBreakdown: [LeaguePointsEntry]
+    var photoBase64: String? = nil
 }
 
 struct LeaguePointsEntry: Identifiable {

@@ -11,15 +11,18 @@ struct CommunitySettingsView: View {
     @EnvironmentObject var communityManager: CommunityManager
 
     @State private var groupName: String
-    @State private var inviteCode = "KICK-2025-X7"
+    @State private var inviteCode: String
     @State private var selectedLeagues: Set<String>
     @State private var selectedBonusCategories: Set<String>
     @State private var showLeagueSelection = false
     @State private var showBonusFill = false
+    @State private var showBonusResults = false
+    @State private var codeCopied = false
 
     init(community: CommunityModel) {
         self.community = community
         _groupName = State(initialValue: community.name)
+        _inviteCode = State(initialValue: community.inviteCode ?? "—")
         _selectedLeagues = State(initialValue: community.activeLeagues)
         // nil → alle Kategorien aktiv (= kompletter Satz)
         _selectedBonusCategories = State(
@@ -111,7 +114,7 @@ struct CommunitySettingsView: View {
                         }
                     }
 
-                    // --- BONUS NACHTRAGEN (nur Admin) ---
+                    // --- BONUS NACHTRAGEN + ERGEBNISSE (nur Admin) ---
                     if community.isCreatedByUser {
                         Section(header: sectionHeader("Mitglieder")) {
                             Button(action: {
@@ -127,6 +130,25 @@ struct CommunitySettingsView: View {
                                     }
                                     Spacer()
                                     Image(systemName: "person.badge.plus")
+                                        .foregroundColor(.oneKickNeon)
+                                }
+                            }
+                            .padding(.vertical, 5)
+                            .listRowBackground(Color.oneKickDarkGray)
+
+                            Button(action: {
+                                HapticManager.instance.impact(style: .medium)
+                                showBonusResults = true
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Bonus-Ergebnisse eintragen")
+                                            .font(.headline).foregroundColor(.white)
+                                        Text("Korrekte Saison-Endantworten für Punkteberechnung")
+                                            .font(.caption).foregroundColor(.oneKickNeon)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "checkmark.seal.fill")
                                         .foregroundColor(.oneKickNeon)
                                 }
                             }
@@ -149,8 +171,14 @@ struct CommunitySettingsView: View {
                                 Button(action: {
                                     UIPasteboard.general.string = inviteCode
                                     HapticManager.instance.notification(type: .success)
+                                    withAnimation { codeCopied = true }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                        withAnimation { codeCopied = false }
+                                    }
                                 }) {
-                                    Image(systemName: "doc.on.doc.fill").font(.title2).foregroundColor(.gray)
+                                    Image(systemName: codeCopied ? "checkmark.circle.fill" : "doc.on.doc.fill")
+                                        .font(.title2)
+                                        .foregroundColor(codeCopied ? .green : .white)
                                 }.buttonStyle(PlainButtonStyle())
                                 ShareLink(item: shareMessage) {
                                     Image(systemName: "square.and.arrow.up.fill")
@@ -209,6 +237,15 @@ struct CommunitySettingsView: View {
             .sheet(isPresented: $showBonusFill) {
                 AdminBonusFillView(community: community)
             }
+            .sheet(isPresented: $showBonusResults) {
+                AdminBonusResultsView(community: community)
+            }
+            .task {
+                guard community.inviteCode == nil, community.isCreatedByUser else { return }
+                if let code = try? await communityManager.generateAndSaveInviteCode(for: community) {
+                    inviteCode = code
+                }
+            }
         }
     }
 
@@ -236,6 +273,8 @@ struct ManageLeaguesView: View {
         "FA Cup", "Copa del Rey", "Coppa Italia", "Coupe de France",
         // Internationale Ligen
         "MLS", "Saudi Pro League",
+        // Sonstiges
+        "Relegation",
         // Nationalmannschaften
         "Weltmeisterschaft", "Europameisterschaft", "Nations League", "WM Qualifikation", "EM Qualifikation",
         // Frauenfußball

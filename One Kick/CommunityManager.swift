@@ -43,6 +43,9 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
     /// Welche Bonus-Kategorien sind aktiv? nil = alle aktiv.
     var activeBonusCategories: [String]?
 
+    /// Einladungscode zum Beitreten.
+    var inviteCode: String?
+
     /// Erstellzeitpunkt (für Sortierung).
     var createdAt: Date
 
@@ -52,6 +55,7 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
         name: String,
         memberIds: [String] = [],
         activeLeagues: Set<String> = [],
+        inviteCode: String? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -59,6 +63,7 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
         self.name = name
         self.memberIds = memberIds
         self.activeLeagues = activeLeagues
+        self.inviteCode = inviteCode
         self.createdAt = createdAt
     }
 
@@ -116,6 +121,8 @@ class CommunityManager: ObservableObject {
     @Published var selectedTab: Int = 0
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
+    /// Wird aktualisiert sobald die App in den Vordergrund kommt → Views reagieren mit Refresh
+    @Published var appBecameActive: Date = .now
 
     // MARK: Private
 
@@ -125,6 +132,14 @@ class CommunityManager: ObservableObject {
     // MARK: Init
 
     init() {
+        NotificationCenter.default.addObserver(
+            forName: .openTippenTab,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.selectedTab = 1
+        }
+
         // Reagiere auf Login/Logout.
         _ = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self = self else { return }
@@ -224,6 +239,7 @@ class CommunityManager: ObservableObject {
             name: trimmedName,
             memberIds: [userId],
             activeLeagues: activeLeagues,
+            inviteCode: Self.generateInviteCode(),
             createdAt: Date()
         )
 
@@ -347,6 +363,41 @@ class CommunityManager: ObservableObject {
             }
             completion?(error)
         }
+    }
+
+    // MARK: - Invite Code
+
+    static func generateInviteCode() -> String {
+        let chars = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+        let part = { String((0..<4).map { _ in chars.randomElement()! }) }
+        return "\(part())-\(part())"
+    }
+
+    @discardableResult
+    func generateAndSaveInviteCode(for community: CommunityModel) async throws -> String {
+        guard let id = community.id else { throw CommunityError.missingId }
+        let code = Self.generateInviteCode()
+        try await db.collection("communities").document(id).updateData(["inviteCode": code])
+        return code
+    }
+
+    func joinCommunity(code: String) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else { throw CommunityError.notAuthenticated }
+        let normalized = code.uppercased().trimmingCharacters(in: .whitespaces)
+        let snapshot = try await db.collection("communities")
+            .whereField("inviteCode", isEqualTo: normalized).getDocuments()
+        guard let doc = snapshot.documents.first else {
+            throw NSError(domain: "OneKick", code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "Code nicht gefunden. Prüfe die Eingabe."])
+        }
+        let community = try doc.data(as: CommunityModel.self)
+        guard !community.memberIds.contains(userId) else {
+            throw NSError(domain: "OneKick", code: 409,
+                userInfo: [NSLocalizedDescriptionKey: "Du bist bereits Mitglied dieser Tipprunde."])
+        }
+        try await db.collection("communities").document(doc.documentID).updateData([
+            "memberIds": FieldValue.arrayUnion([userId])
+        ])
     }
 
     // MARK: - League Name Migration

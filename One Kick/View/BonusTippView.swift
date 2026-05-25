@@ -48,26 +48,29 @@ class BonusTippViewModel: ObservableObject {
         var standings: [String: [StandingEntry]] = [:]
         var locked = Set<String>()
 
+        // LeagueMapper-Aufrufe vorab auf dem Main-Actor ausführen (nicht in addTask-Closure)
+        let leagueParams: [(name: String, lid: Int, max: Int)] = community.activeLeagues.map { name in
+            (name: name, lid: LeagueMapper.getID(for: name), max: LeagueMapper.getMaxMatchday(for: name))
+        }
+
         await withTaskGroup(of: LResult.self) { group in
-            for leagueName in community.activeLeagues {
+            for params in leagueParams {
                 group.addTask {
-                    let lid     = LeagueMapper.getID(for: leagueName)
-                    let max     = LeagueMapper.getMaxMatchday(for: leagueName)
-                    let entries = await self.api.fetchStandings(for: lid)
-                    let round   = await self.api.determineDisplayRoundWithMatches(for: lid, maxMatchday: max)
+                    let entries = await self.api.fetchStandings(for: params.lid)
+                    let round   = await self.api.determineDisplayRoundWithMatches(for: params.lid, maxMatchday: params.max)
                     var isLocked = round.matchday > 1 ||
                         round.matches.contains { !["NS", "TBD"].contains($0.fixture.status.short) }
-                    if !isLocked && max == 0 {
+                    if !isLocked && params.max == 0 {
                         let iso = ISO8601DateFormatter()
                         let from = String(iso.string(from: Date().addingTimeInterval(-90 * 86400)).prefix(10))
                         let to   = String(iso.string(from: Date()).prefix(10))
-                        let recent = await self.api.fetchMatchesByDateRange(for: lid, from: from, to: to)
+                        let recent = await self.api.fetchMatchesByDateRange(for: params.lid, from: from, to: to)
                         let done: Set<String> = ["FT", "AET", "PEN", "AWD", "WO", "1H", "2H", "HT", "ET", "P", "LIVE"]
                         if recent.contains(where: { done.contains($0.fixture.status.short) }) {
                             isLocked = true
                         }
                     }
-                    return (name: leagueName, entries: entries, locked: isLocked)
+                    return (name: params.name, entries: entries, locked: isLocked)
                 }
             }
             for await r in group {
@@ -128,13 +131,7 @@ struct BonusTippView: View {
     @Environment(\.dismiss) var dismiss
     @State private var activeSheet: BonusSheet?
 
-    private let koLeagues: Set<String> = [
-        "Champions League", "Europa League", "Conference League",
-        "DFB-Pokal", "FA Cup", "Copa del Rey", "Coppa Italia", "Coupe de France",
-        "Weltmeisterschaft", "Europameisterschaft", "Nations League",
-        "WM Qualifikation", "EM Qualifikation",
-        "Frauen Champions League", "Frauen WM", "Frauen EM"
-    ]
+    // koLeagueNames ist in BonusLeagueCard.swift (modul-weit) definiert
 
     private var activeCategorySet: Set<String> {
         community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
@@ -184,7 +181,7 @@ struct BonusTippView: View {
                             }
 
                             ForEach(editableLeagues, id: \.self) { leagueName in
-                                let isKO = koLeagues.contains(leagueName)
+                                let isKO = koLeagueNames.contains(leagueName)
                                 let cats = categories(for: leagueName, isKO: isKO)
                                 if !cats.isEmpty {
                                     BonusTippLeagueSection(
@@ -236,11 +233,7 @@ struct BonusTippView: View {
     }
 
     private func categories(for leagueName: String, isKO: Bool) -> [String] {
-        var cats: [String] = isKO
-            ? ["Finalisten tippen", "Halbfinalisten tippen"]
-            : ["Torschützenkönig", "Meiste Tore (Team)", "Meiste Gegentore", "Endtabelle"]
-        cats += ["Meiste Aluminium-Treffer", "Meiste Karten", "Meiste Zu-Null-Spiele"]
-        return cats.filter { activeCategorySet.contains($0) }
+        bonusCategoriesForLeague(leagueName, activeCategorySet: activeCategorySet)
     }
 
     @ViewBuilder
@@ -249,9 +242,10 @@ struct BonusTippView: View {
         let teams = vm.teams(for: sheet.leagueName)
 
         switch sheet.category {
-        case "Torschützenkönig":
+        case "Torschützenkönig", "Meiste Vorlagen":
             PlayerSearchSheet(
                 leagueName:    sheet.leagueName,
+                category:      sheet.category,
                 currentAnswer: vm.answers[key] ?? "",
                 onSelect:      { vm.answers[key] = $0 },
                 searchPlayers: { await vm.searchPlayers(in: sheet.leagueName, query: $0) }

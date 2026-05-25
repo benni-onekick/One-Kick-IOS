@@ -15,11 +15,19 @@ import FirebaseAuth
 struct CommunityPunkteView: View {
     let community: CommunityModel
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject private var communityManager: CommunityManager
     @StateObject private var viewModel: CommunityPunkteViewModel
-    @State private var selectedTab = 0   // 0=Spielwoche 1=Ligen 2=Gesamt 3=Bonus
-    @State private var weekOffset  = 0   // 0=aktuelle Woche, -1=letzte Woche, …
+    @State private var selectedTab = 0
+    @State private var weekOffset  = 0
+    @State private var lastRefreshAt: Date = .distantPast
 
     private var currentUserId: String? { Auth.auth().currentUser?.uid }
+
+    private func refreshIfStale() {
+        guard Date().timeIntervalSince(lastRefreshAt) > 30 else { return }
+        lastRefreshAt = .now
+        Task { await viewModel.loadData() }
+    }
 
     init(community: CommunityModel) {
         self.community = community
@@ -38,6 +46,19 @@ struct CommunityPunkteView: View {
         }
         .navigationBarHidden(true)
         .task { await viewModel.loadData() }
+        .onAppear { refreshIfStale() }
+        .onChange(of: communityManager.appBecameActive) { _, _ in refreshIfStale() }
+        .task(id: "live-refresh") {
+            // 60-Sekunden-Auto-Refresh: läuft auch wenn liveLeagues noch leer ist,
+            // solange Anpfiff-Zeit-Heuristik ein potentiell laufendes Spiel erkennt
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                guard !Task.isCancelled else { break }
+                if viewModel.hasPotentiallyLive {
+                    await viewModel.loadData()
+                }
+            }
+        }
     }
 
     // MARK: Header
@@ -62,17 +83,13 @@ struct CommunityPunkteView: View {
 
     // MARK: Tab Bar
 
-    private let tabTitles = ["Spielwoche", "Ligen", "Gesamt", "Bonus"]
+    private let tabTitles = ["Gesamt", "Ligen", "Bonus"]
 
     private var tabBar: some View {
         HStack(spacing: 0) {
             ForEach(Array(tabTitles.enumerated()), id: \.offset) { idx, title in
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.2)) { selectedTab = idx }
-                    if idx == 0 && weekOffset != 0 {
-                        weekOffset = 0
-                        Task { await viewModel.loadSpielwoche(offset: 0) }
-                    }
                 }) {
                     VStack(spacing: 6) {
                         Text(title)
@@ -94,22 +111,16 @@ struct CommunityPunkteView: View {
     private var contentView: some View {
         switch selectedTab {
         case 0:
-            if viewModel.isLoading {
-                loadingPlaceholder("Punkte werden berechnet...")
+            if viewModel.isLoading || viewModel.isLoadingGesamt {
+                loadingPlaceholder("Saison-Punkte werden geladen...")
             } else {
-                spielwocheTab
+                leaderboardView(entries: viewModel.totalLeaderboard, label: "Gesamte Saison")
             }
         case 1:
             if viewModel.isLoading || viewModel.isLoadingGesamt {
                 loadingPlaceholder("Ligen werden geladen...")
             } else {
                 ligenTab
-            }
-        case 2:
-            if viewModel.isLoading || viewModel.isLoadingGesamt {
-                loadingPlaceholder("Saison-Punkte werden geladen...")
-            } else {
-                leaderboardView(entries: viewModel.totalLeaderboard, label: "Gesamte Saison")
             }
         default:
             bonusTab
@@ -132,7 +143,7 @@ struct CommunityPunkteView: View {
         for (i, entry) in entries.enumerated() {
             if i == 0 {
                 ranks.append(1)
-            } else if entry.points == entries[i - 1].points {
+            } else if entry.totalPoints == entries[i - 1].totalPoints {
                 ranks.append(ranks[i - 1])
             } else {
                 ranks.append(i + 1)
@@ -151,7 +162,8 @@ struct CommunityPunkteView: View {
                     let ranks = tiedRanks(for: entries)
                     ForEach(Array(entries.enumerated()), id: \.element.id) { i, entry in
                         LeaderboardRowView(rank: ranks[i], entry: entry,
-                                           isCurrentUser: entry.id == currentUserId)
+                                           isCurrentUser: entry.id == currentUserId,
+                                           community: community)
                     }
                 }
                 Spacer(minLength: 80)
@@ -182,6 +194,7 @@ struct CommunityPunkteView: View {
                 HStack(spacing: 12) {
                     Button(action: {
                         weekOffset -= 1
+                        viewModel.weekOffsetForRefresh = weekOffset
                         Task { await viewModel.loadSpielwoche(offset: weekOffset) }
                     }) {
                         Image(systemName: "chevron.left")
@@ -199,12 +212,14 @@ struct CommunityPunkteView: View {
                             .font(.system(size: 12)).foregroundColor(.oneKickNeon)
                         Text(viewModel.currentWeekLabel.isEmpty ? "Lädt…" : viewModel.currentWeekLabel)
                             .font(.system(size: 12, weight: .semibold)).foregroundColor(.oneKickNeon)
+                        if !viewModel.liveLeagues.isEmpty { LiveBadge() }
                     }
 
                     Spacer()
 
                     Button(action: {
                         weekOffset += 1
+                        viewModel.weekOffsetForRefresh = weekOffset
                         Task { await viewModel.loadSpielwoche(offset: weekOffset) }
                     }) {
                         Image(systemName: "chevron.right")
@@ -220,7 +235,7 @@ struct CommunityPunkteView: View {
 
                 if viewModel.isLoadingSpielwoche {
                     ProgressView().tint(.oneKickNeon).padding(.top, 40)
-                } else if viewModel.weekMatchesByLeague.isEmpty {
+                } else if viewModel.spielwocheLeaderboard.isEmpty {
                     // Wirklich keine Spiele in dieser Woche
                     VStack(spacing: 12) {
                         Image(systemName: "calendar.badge.minus")
@@ -309,12 +324,14 @@ struct CommunityPunkteView: View {
                     }
                     .padding(.horizontal, 20).padding(.bottom, 4)
 
-                    ForEach(Array(community.activeLeagues).sorted(), id: \.self) { leagueName in
+                    ForEach(community.activeLeagues.sorted { LeagueMapper.sortOrder(for: $0) < LeagueMapper.sortOrder(for: $1) }, id: \.self) { leagueName in
                         let leader = viewModel.leagueLeader(for: leagueName)
                         NavigationLink(destination: LeagueLeaderboardView(
                             leagueName: leagueName,
                             rankings: viewModel.leagueRanking(for: leagueName),
-                            currentUserId: currentUserId
+                            currentUserId: currentUserId,
+                            community: community,
+                            hasLive: viewModel.liveLeagues.contains(leagueName)
                         )) {
                             LigenOverviewCard(leagueName: leagueName,
                                               leaderName: leader?.name,
@@ -358,7 +375,7 @@ struct CommunityPunkteView: View {
                     ProgressView().tint(.oneKickNeon).padding()
                 } else {
                     let enabledCats = community.activeBonusCategories.map { Set($0) }
-                    ForEach(Array(community.activeLeagues).sorted(), id: \.self) { leagueName in
+                    ForEach(community.activeLeagues.sorted { LeagueMapper.sortOrder(for: $0) < LeagueMapper.sortOrder(for: $1) }, id: \.self) { leagueName in
                         if viewModel.bonusLockedLeagues.contains(leagueName) {
                             BonusAnswerCard(
                                 leagueName:        leagueName,
@@ -391,14 +408,19 @@ struct LeaderboardRowView: View {
     let rank: Int
     let entry: UserPointsEntry
     let isCurrentUser: Bool
+    let community: CommunityModel
 
     var body: some View {
-        NavigationLink(destination: PlayerDetailView(entry: entry, isCurrentUser: isCurrentUser)) {
+        NavigationLink(destination: PlayerDetailView(entry: entry, isCurrentUser: isCurrentUser, community: community)) {
             HStack(spacing: 12) {
                 Text("\(rank)")
                     .font(.system(size: 16, weight: .black))
                     .foregroundColor(rankColor)
                     .frame(width: 28, alignment: .center)
+
+                AvatarView(displayName: entry.displayName,
+                           photoBase64: entry.photoBase64,
+                           size: 34)
 
                 Text(entry.displayName)
                     .font(.system(size: 15, weight: isCurrentUser ? .bold : .regular))
@@ -408,7 +430,7 @@ struct LeaderboardRowView: View {
                 Spacer()
 
                 HStack(spacing: 3) {
-                    Text("\(entry.points)")
+                    Text("\(entry.totalPoints)")
                         .font(.system(size: 18, weight: .black))
                         .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
                     Text("Pkt")
@@ -503,6 +525,10 @@ struct SpielwocheLeaderboardRowView: View {
                     .foregroundColor(rankColor)
                     .frame(width: 28, alignment: .center)
 
+                AvatarView(displayName: entry.displayName,
+                           photoBase64: entry.photoBase64,
+                           size: 34)
+
                 Text(entry.displayName)
                     .font(.system(size: 15, weight: isCurrentUser ? .bold : .regular))
                     .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
@@ -511,7 +537,7 @@ struct SpielwocheLeaderboardRowView: View {
                 Spacer()
 
                 HStack(spacing: 3) {
-                    Text("\(entry.points)")
+                    Text("\(entry.totalPoints)")
                         .font(.system(size: 18, weight: .black))
                         .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
                     Text("Pkt")

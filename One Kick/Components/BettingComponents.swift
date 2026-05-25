@@ -11,14 +11,17 @@
 
 import SwiftUI
 
-private let centerWidth: CGFloat = 72
+private let centerWidth: CGFloat = 64
 
 struct ApiMatchRow: View {
     let match: MatchData
     var onTapTip: (() -> Void)? = nil
     var myTip: (home: Int, away: Int)? = nil
     var showLeague: Bool = false
-    var prediction: MatchPrediction? = nil
+    var odds: MatchWinnerOdds? = nil
+    var onLiveInfo: (() -> Void)? = nil
+
+    @AppStorage("showOdds") private var showOdds = true
 
     var isLive:     Bool { ["1H","2H","HT","ET","P","LIVE"].contains(match.fixture.status.short) }
     var isFuture:   Bool { ["NS","TBD"].contains(match.fixture.status.short) }
@@ -43,6 +46,7 @@ struct ApiMatchRow: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
                 if showLeague {
@@ -63,15 +67,15 @@ struct ApiMatchRow: View {
                         .foregroundColor(.red)
                 }
 
-                HStack(spacing: 0) {
+                HStack(spacing: 8) {
                     // Heimteam
                     HStack(spacing: 6) {
                         teamLogo(match.teams.home.logo)
                         Text(match.teams.home.name)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.75)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
                             .multilineTextAlignment(.leading)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -83,10 +87,10 @@ struct ApiMatchRow: View {
                     // Auswärtsteam
                     HStack(spacing: 6) {
                         Text(match.teams.away.name)
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
-                            .lineLimit(3)
-                            .minimumScaleFactor(0.75)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
                             .multilineTextAlignment(.trailing)
                         teamLogo(match.teams.away.logo)
                     }
@@ -94,20 +98,40 @@ struct ApiMatchRow: View {
                 }
 
                 if isFuture {
-                    HStack(spacing: 12) {
-                        Text(formattedDateTime)
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        if let pred = prediction {
-                            predictionBadge(pred)
-                        }
+                    if showOdds, let o = odds {
+                        oddsRow(o)
                     }
+                    Text(formattedDateTime)
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
             }
 
             rightColumnView
         }
         .padding(14)
+
+        if isLive, let action = onLiveInfo {
+            Divider()
+                .background(Color.white.opacity(0.08))
+            Button(action: { HapticManager.instance.impact(style: .light); action() }) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 5, height: 5)
+                    Text("Live Info")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.gray)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            }
+        }
+        }
         .background(Color.oneKickDarkGray)
         .cornerRadius(16)
         .overlay(
@@ -117,8 +141,6 @@ struct ApiMatchRow: View {
                     lineWidth: isLive ? 1.5 : 1
                 )
         )
-        // LIVE-Badge erscheint inline neben dem Liga-Namen (showLeague=true)
-        // oder der rote Kartenrand signalisiert Live (showLeague=false)
     }
 
     // MARK: - Mitte
@@ -147,10 +169,12 @@ struct ApiMatchRow: View {
             } else {
                 let h = match.goals.home.map { String($0) } ?? "-"
                 let a = match.goals.away.map { String($0) } ?? "-"
-                VStack(spacing: 2) {
-                    Text("Kein Tipp")
-                        .font(.system(size: 7, weight: .bold)).foregroundColor(.gray)
+                VStack(spacing: 1) {
                     Text("\(h):\(a)").font(.subheadline).fontWeight(.black).foregroundColor(.white)
+                    Text("Endergebnis")
+                        .font(.system(size: 7, weight: .bold)).foregroundColor(.gray)
+                    Text("Kein Tipp")
+                        .font(.system(size: 7, weight: .bold)).foregroundColor(.gray.opacity(0.6))
                 }
             }
         }
@@ -169,21 +193,34 @@ struct ApiMatchRow: View {
         }
     }
 
-    // Tipp + Ändern (getippt, Zukunft)
+    // Tipp + Ändern (getippt, Zukunft) — ohne onTapTip nur Anzeige ohne Button
+    @ViewBuilder
     private func tippedFutureCenter(tip: (home: Int, away: Int)) -> some View {
-        Button(action: { HapticManager.instance.impact(style: .light); onTapTip?() }) {
+        if let action = onTapTip {
+            Button(action: { HapticManager.instance.impact(style: .light); action() }) {
+                VStack(spacing: 1) {
+                    Text("\(tip.home):\(tip.away)")
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundColor(.black)
+                    Text("Ändern")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.black.opacity(0.6))
+                }
+                .padding(.vertical, 3)
+                .frame(maxWidth: .infinity)
+                .background(Color.oneKickNeon)
+                .cornerRadius(10)
+            }
+        } else {
+            // Leaderboard-Ansicht: Tipp ohne Button anzeigen
             VStack(spacing: 1) {
                 Text("\(tip.home):\(tip.away)")
                     .font(.system(size: 13, weight: .black))
-                    .foregroundColor(.black)
-                Text("Ändern")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(.black.opacity(0.6))
+                    .foregroundColor(.oneKickNeon)
+                Text("Mein Tipp")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundColor(.gray)
             }
-            .padding(.vertical, 3)
-            .frame(maxWidth: .infinity)
-            .background(Color.oneKickNeon)
-            .cornerRadius(10)
         }
     }
 
@@ -204,6 +241,8 @@ struct ApiMatchRow: View {
     // Live-Ergebnis + Minute (kein Tipp, live)
     private var liveScoreCenter: some View {
         VStack(spacing: 2) {
+            Text("Kein Tipp")
+                .font(.system(size: 7, weight: .bold)).foregroundColor(.gray.opacity(0.6))
             Text("\(liveScore.home):\(liveScore.away)")
                 .font(.subheadline).fontWeight(.black).foregroundColor(.red)
             if !minuteLabel.isEmpty {
@@ -217,11 +256,13 @@ struct ApiMatchRow: View {
     private func finishedTippedCenter(tip: (home: Int, away: Int)) -> some View {
         let h = match.goals.home.map { String($0) } ?? "-"
         let a = match.goals.away.map { String($0) } ?? "-"
-        return VStack(spacing: 2) {
+        return VStack(spacing: 1) {
             Text("\(tip.home):\(tip.away)")
                 .font(.system(size: 12, weight: .black)).foregroundColor(.oneKickNeon)
             Text("\(h):\(a)")
                 .font(.system(size: 12, weight: .black)).foregroundColor(.white)
+            Text("Endergebnis")
+                .font(.system(size: 7, weight: .bold)).foregroundColor(.gray)
         }
     }
 
@@ -230,18 +271,18 @@ struct ApiMatchRow: View {
     @ViewBuilder
     private var rightColumnView: some View {
         if isFuture {
-            // Zukunft: rechte Spalte immer leer (Tippen/Ändern ist in der Mitte)
+            // Kein Platzhalter – Row nutzt volle Breite
         } else if let tip = myTip {
             let pts = calculatePoints(tip: tip)
             VStack(spacing: 0) {
                 Text("\(pts)").font(.title2).bold()
-                    .foregroundColor(pts > 0 ? .oneKickNeon : .white)
+                    .foregroundColor(.oneKickNeon)
                 Text("Pkt").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
             }
             .frame(width: 50)
         } else {
             VStack(spacing: 0) {
-                Text("0").font(.title2).bold().foregroundColor(.white)
+                Text("0").font(.title2).bold().foregroundColor(.gray.opacity(0.5))
                 Text("Pkt").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
             }
             .frame(width: 50)
@@ -269,30 +310,40 @@ struct ApiMatchRow: View {
         return pts
     }
 
-    // MARK: - Prognose
+    // MARK: - Wettquoten
 
-    private func predictionBadge(_ pred: MatchPrediction) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 9))
-                .foregroundColor(.oneKickNeon)
-            Text(predictionSummary(pred))
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(.gray)
+    private func oddsRow(_ o: MatchWinnerOdds) -> some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(String(format: "%.2f", o.home))
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.gray)
+                Text("Sieg")
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundColor(.gray.opacity(0.65))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .center, spacing: 1) {
+                Text(String(format: "%.2f", o.draw))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.gray)
+                Text("Unentschieden")
+                    .font(.system(size: 7, weight: .medium))
+                    .foregroundColor(.gray.opacity(0.65))
+            }
+            .frame(width: centerWidth, alignment: .center)
+
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(String(format: "%.2f", o.away))
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.gray)
+                Text("Sieg")
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundColor(.gray.opacity(0.65))
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
-    }
-
-    private func predictionSummary(_ pred: MatchPrediction) -> String {
-        let h = parsePercent(pred.percent.home)
-        let a = parsePercent(pred.percent.away)
-        let d = parsePercent(pred.percent.draw)
-        if h >= a && h >= d { return "Heimsieg \(pred.percent.home)" }
-        if a > h && a >= d  { return "Auswärtssieg \(pred.percent.away)" }
-        return "Unentschieden \(pred.percent.draw)"
-    }
-
-    private func parsePercent(_ s: String) -> Double {
-        Double(s.replacingOccurrences(of: "%", with: "").trimmingCharacters(in: .whitespaces)) ?? 0
     }
 
     // MARK: - Logo

@@ -2,11 +2,6 @@
 //  BettingPopupView.swift
 //  One Kick
 //
-//  UPDATE:
-//  - communityId-Parameter hinzugefügt.
-//  - Speichern-Button schreibt Tipp in Firestore via BetManager.
-//  - onSaved-Callback für Aktualisierung der aufrufenden View.
-//
 
 import SwiftUI
 import FirebaseAuth
@@ -15,15 +10,38 @@ struct BettingPopupView: View {
     @Binding var isPresented: Bool
     let match: MatchData
     let communityId: String
-    var prediction: MatchPrediction? = nil
+    var odds: MatchWinnerOdds? = nil
     var onSaved: (() -> Void)? = nil
 
+    @EnvironmentObject var communityManager: CommunityManager
+
+    @AppStorage("showOdds") private var showOdds = true
     @State private var homeTip: String = ""
     @State private var awayTip: String = ""
     @State private var isSaving = false
     @State private var inputError = false
+    @State private var onlyThisCommunity = false
 
     private let betManager = BetManager()
+
+    private var affectedCommunities: [CommunityModel] {
+        guard UserSettings.shared.crossCommunityTipping else { return [] }
+        let leagueName = match.league.name
+        let mappedName = LeagueMapper.getName(for: match.league.id)
+        return communityManager.communities.filter { community in
+            community.activeLeagues.contains(leagueName) ||
+            (mappedName != nil && community.activeLeagues.contains(mappedName!))
+        }
+    }
+
+    private var affectedCommunityIds: [String] {
+        let ids = affectedCommunities.compactMap { $0.id }
+        return ids.isEmpty ? [communityId] : ids
+    }
+
+    private var showsCrossCommunityBanner: Bool {
+        UserSettings.shared.crossCommunityTipping
+    }
 
     var matchDateTime: String {
         let iso = ISO8601DateFormatter()
@@ -40,112 +58,175 @@ struct BettingPopupView: View {
                 .ignoresSafeArea()
                 .onTapGesture { isPresented = false }
 
-            VStack(spacing: 20) {
-                // HEADER
-                VStack(spacing: 4) {
-                    Text("Tipp abgeben")
-                        .font(.title2).bold().foregroundColor(.white)
-                    Text(matchDateTime)
-                        .font(.caption).foregroundColor(.gray)
-                }
-
-                // KI-PROGNOSE
-                if let pred = prediction {
-                    predictionView(pred)
-                }
-
-                // TEAMS & EINGABE
-                HStack(spacing: 15) {
-                    teamColumn(name: match.teams.home.name, logo: match.teams.home.logo, tip: $homeTip)
-                    Text(":")
-                        .font(.title).bold().foregroundColor(.gray).padding(.top, 40)
-                    teamColumn(name: match.teams.away.name, logo: match.teams.away.logo, tip: $awayTip)
-                }
-                .padding(.vertical, 10)
-
-                if inputError {
-                    Text("Bitte gültige Zahlen eingeben.")
-                        .font(.caption).foregroundColor(.orange)
-                }
-
-                // BUTTONS
-                HStack(spacing: 15) {
-                    Button(action: {
-                        HapticManager.instance.impact(style: .light)
-                        isPresented = false
-                    }) {
-                        Text("Abbrechen")
-                            .font(.subheadline).bold().foregroundColor(.white)
-                            .frame(maxWidth: .infinity).padding()
-                            .background(Color.oneKickBlack).cornerRadius(12)
+            ScrollView {
+                VStack(spacing: 12) {
+                    // HEADER
+                    VStack(spacing: 4) {
+                        Text("Tipp abgeben")
+                            .font(.title2).bold().foregroundColor(.white)
+                        Text(matchDateTime)
+                            .font(.caption).foregroundColor(.gray)
                     }
 
-                    Button(action: saveBet) {
-                        Group {
-                            if isSaving {
-                                ProgressView().tint(.black)
-                            } else {
-                                Text("Speichern").font(.subheadline).bold().foregroundColor(.black)
-                            }
+                    // WETTQUOTEN
+                    if showOdds, let o = odds {
+                        oddsView(o)
+                    }
+
+                    // TEAMS & EINGABE
+                    HStack(spacing: 15) {
+                        teamColumn(name: match.teams.home.name, logo: match.teams.home.logo, tip: $homeTip)
+                        Text(":")
+                            .font(.title).bold().foregroundColor(.gray).padding(.top, 35)
+                        teamColumn(name: match.teams.away.name, logo: match.teams.away.logo, tip: $awayTip)
+                    }
+                    .padding(.vertical, 6)
+
+                    if inputError {
+                        Text("Bitte gültige Zahlen eingeben.")
+                            .font(.caption).foregroundColor(.orange)
+                    }
+
+                    // ÜBERGREIFENDES TIPPEN BANNER
+                    if showsCrossCommunityBanner {
+                        crossCommunityBanner
+                    }
+
+                    // BUTTONS
+                    HStack(spacing: 10) {
+                        Button(action: {
+                            HapticManager.instance.impact(style: .light)
+                            isPresented = false
+                        }) {
+                            Text("Abbrechen")
+                                .font(.subheadline).bold().foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color.oneKickBlack).cornerRadius(12)
                         }
-                        .frame(maxWidth: .infinity).padding()
-                        .background(Color.oneKickNeon).cornerRadius(12)
+
+                        Button(action: saveBet) {
+                            Group {
+                                if isSaving {
+                                    ProgressView().tint(.black)
+                                } else {
+                                    Text("Speichern").font(.subheadline).bold().foregroundColor(.black)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.oneKickNeon).cornerRadius(12)
+                        }
+                        .disabled(isSaving)
                     }
-                    .disabled(isSaving)
+                }
+                .padding(18)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil
+                    )
                 }
             }
-            .padding(25)
+            .fixedSize(horizontal: false, vertical: true)
             .background(Color.oneKickDarkGray)
             .cornerRadius(24)
             .shadow(color: .black.opacity(0.3), radius: 20)
-            .padding(.horizontal, 30)
+            .padding(.horizontal, 20)
         }
     }
 
     @ViewBuilder
-    private func predictionView(_ pred: MatchPrediction) -> some View {
-        let h = parsePercent(pred.percent.home) / 100
-        let d = parsePercent(pred.percent.draw) / 100
-        let a = max(0, 1 - h - d)
+    private var crossCommunityBanner: some View {
+        HStack(spacing: 8) {
+            communityTile(
+                label: "Community\nübergreifend tippen",
+                active: !onlyThisCommunity
+            ) {
+                onlyThisCommunity = false
+            }
 
-        VStack(spacing: 6) {
+            communityTile(
+                label: "Nur in dieser\nCommunity tippen",
+                active: onlyThisCommunity
+            ) {
+                onlyThisCommunity = true
+            }
+        }
+    }
+
+    private func communityTile(label: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            HapticManager.instance.impact(style: .light)
+            action()
+        }) {
+            Text(label)
+                .font(.system(size: 11, weight: .bold))
+                .multilineTextAlignment(.center)
+                .foregroundColor(active ? .black : .gray)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(active ? Color.oneKickNeon : Color.white.opacity(0.08))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(active ? Color.clear : Color.white.opacity(0.1), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func oddsView(_ o: MatchWinnerOdds) -> some View {
+        let rawH = 1 / o.home; let rawD = 1 / o.draw; let rawA = 1 / o.away
+        let total = rawH + rawD + rawA
+        let pH = rawH / total; let pD = rawD / total; let pA = rawA / total
+
+        return VStack(spacing: 6) {
             HStack(spacing: 5) {
-                Image(systemName: "sparkles")
+                Image(systemName: "chart.bar.fill")
                     .font(.system(size: 10)).foregroundColor(.oneKickNeon)
-                Text("KI-Prognose")
+                Text("Wettquoten")
                     .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
                 Spacer()
-                if let advice = pred.advice {
-                    Text(advice)
-                        .font(.system(size: 9)).foregroundColor(.gray.opacity(0.7))
-                        .lineLimit(1)
-                }
             }
 
             GeometryReader { geo in
                 HStack(spacing: 2) {
                     RoundedRectangle(cornerRadius: 3)
                         .fill(Color.green)
-                        .frame(width: max(0, geo.size.width * h))
+                        .frame(width: max(0, geo.size.width * pH))
                     RoundedRectangle(cornerRadius: 3)
                         .fill(Color.gray.opacity(0.5))
-                        .frame(width: max(0, geo.size.width * d))
+                        .frame(width: max(0, geo.size.width * pD))
                     RoundedRectangle(cornerRadius: 3)
                         .fill(Color.red.opacity(0.7))
-                        .frame(width: max(0, geo.size.width * a))
+                        .frame(width: max(0, geo.size.width * pA))
                 }
             }
             .frame(height: 7)
 
             HStack {
-                Text("Heim \(pred.percent.home)")
-                    .font(.system(size: 10, weight: .bold)).foregroundColor(.green)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(String(format: "%.2f", o.home))
+                        .font(.system(size: 13, weight: .bold)).foregroundColor(.gray)
+                    Text("Sieg Heim")
+                        .font(.system(size: 9)).foregroundColor(.gray.opacity(0.7))
+                }
                 Spacer()
-                Text("Unent. \(pred.percent.draw)")
-                    .font(.system(size: 10)).foregroundColor(.gray)
+                VStack(alignment: .center, spacing: 1) {
+                    Text(String(format: "%.2f", o.draw))
+                        .font(.system(size: 13, weight: .semibold)).foregroundColor(.gray)
+                    Text("Unentschieden")
+                        .font(.system(size: 9)).foregroundColor(.gray.opacity(0.7))
+                }
                 Spacer()
-                Text("Ausw. \(pred.percent.away)")
-                    .font(.system(size: 10, weight: .bold)).foregroundColor(.red.opacity(0.85))
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(String(format: "%.2f", o.away))
+                        .font(.system(size: 13, weight: .bold)).foregroundColor(.gray)
+                    Text("Sieg Ausw.")
+                        .font(.system(size: 9)).foregroundColor(.gray.opacity(0.7))
+                }
             }
         }
         .padding(12)
@@ -153,30 +234,39 @@ struct BettingPopupView: View {
         .cornerRadius(12)
     }
 
-    private func parsePercent(_ s: String) -> Double {
-        Double(s.replacingOccurrences(of: "%", with: "").trimmingCharacters(in: .whitespaces)) ?? 0
-    }
-
     @ViewBuilder
     private func teamColumn(name: String, logo: String, tip: Binding<String>) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             AsyncImage(url: URL(string: logo)) { phase in
                 if let image = phase.image { image.resizable().scaledToFit() }
                 else { Circle().fill(Color.gray.opacity(0.3)) }
             }
-            .frame(width: 50, height: 50)
+            .frame(width: 42, height: 42)
 
             Text(name)
-                .font(.caption).bold().foregroundColor(.white).lineLimit(1)
+                .font(.system(size: 10, weight: .bold)).foregroundColor(.white).lineLimit(1)
 
             TextField("-", text: tip)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.title.bold())
-                .frame(width: 65, height: 55)
+                .frame(width: 60, height: 48)
                 .background(Color.oneKickBlack)
                 .cornerRadius(12)
                 .foregroundColor(.oneKickNeon)
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Fertig") {
+                            UIApplication.shared.sendAction(
+                                #selector(UIResponder.resignFirstResponder),
+                                to: nil, from: nil, for: nil
+                            )
+                        }
+                        .foregroundColor(.oneKickNeon)
+                        .fontWeight(.bold)
+                    }
+                }
         }
     }
 
@@ -190,15 +280,26 @@ struct BettingPopupView: View {
         isSaving = true
         HapticManager.instance.impact(style: .medium)
 
+        let ids: [String] = (showsCrossCommunityBanner && !onlyThisCommunity)
+            ? affectedCommunityIds
+            : [communityId]
+
         Task {
-            try? await betManager.saveBet(
+            await betManager.saveBetToMultipleCommunities(
                 fixtureId: match.fixture.id,
-                communityId: communityId,
+                communityIds: ids,
                 homeGoals: home,
                 awayGoals: away
             )
             isPresented = false
             onSaved?()
+            for cid in ids {
+                NotificationCenter.default.post(
+                    name: .tipSaved,
+                    object: nil,
+                    userInfo: ["communityId": cid]
+                )
+            }
         }
     }
 }

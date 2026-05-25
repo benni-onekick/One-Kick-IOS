@@ -9,13 +9,62 @@
 /* Begin PBXBuildFile section */
 		B30569372F76F50E0018A25F /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = B30569362F76F50E0018A25F /* FirebaseAuth */; };
 		B30569392F76F50E0018A25F /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = B30569382F76F50E0018A25F /* FirebaseFirestore */; };
+		B307BD502FBB0D6500E776C0 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B307BD4F2FBB0D6400E776C0 /* UserNotifications.framework */; };
+		B307BD522FBB0D6500E776C0 /* UserNotificationsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B307BD512FBB0D6500E776C0 /* UserNotificationsUI.framework */; };
+		B307BD5C2FBB0D6500E776C0 /* TipNotificationExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B307BD4D2FBB0D6400E776C0 /* TipNotificationExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		B307BD5A2FBB0D6500E776C0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B3FBDA302EF02BCC00198DD6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B307BD4C2FBB0D6400E776C0;
+			remoteInfo = TipNotificationExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B307BD612FBB0D6500E776C0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B307BD5C2FBB0D6500E776C0 /* TipNotificationExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		B307BD4D2FBB0D6400E776C0 /* TipNotificationExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TipNotificationExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B307BD4F2FBB0D6400E776C0 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+		B307BD512FBB0D6500E776C0 /* UserNotificationsUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotificationsUI.framework; path = System/Library/Frameworks/UserNotificationsUI.framework; sourceTree = SDKROOT; };
 		B3FBDA382EF02BCC00198DD6 /* One Kick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "One Kick.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B3FBDA992EF09ABC00198DD6 /* firestore.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = firestore.rules; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B307BD5D2FBB0D6500E776C0 /* Exceptions for "TipNotificationExtension" folder in "TipNotificationExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B307BD4C2FBB0D6400E776C0 /* TipNotificationExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		B307BD532FBB0D6500E776C0 /* TipNotificationExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B307BD5D2FBB0D6500E776C0 /* Exceptions for "TipNotificationExtension" folder in "TipNotificationExtension" target */,
+			);
+			path = TipNotificationExtension;
+			sourceTree = "<group>";
+		};
 		B3FBDA3A2EF02BCC00198DD6 /* One Kick */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "One Kick";
@@ -24,6 +73,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		B307BD4A2FBB0D6400E776C0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B307BD522FBB0D6500E776C0 /* UserNotificationsUI.framework in Frameworks */,
+				B307BD502FBB0D6500E776C0 /* UserNotifications.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B3FBDA352EF02BCC00198DD6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -36,10 +94,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B307BD4E2FBB0D6400E776C0 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B307BD4F2FBB0D6400E776C0 /* UserNotifications.framework */,
+				B307BD512FBB0D6500E776C0 /* UserNotificationsUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		B3FBDA2F2EF02BCC00198DD6 = {
 			isa = PBXGroup;
 			children = (
+				B3FBDA992EF09ABC00198DD6 /* firestore.rules */,
 				B3FBDA3A2EF02BCC00198DD6 /* One Kick */,
+				B307BD532FBB0D6500E776C0 /* TipNotificationExtension */,
+				B307BD4E2FBB0D6400E776C0 /* Frameworks */,
 				B3FBDA392EF02BCC00198DD6 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -48,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				B3FBDA382EF02BCC00198DD6 /* One Kick.app */,
+				B307BD4D2FBB0D6400E776C0 /* TipNotificationExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,6 +126,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		B307BD4C2FBB0D6400E776C0 /* TipNotificationExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B307BD5E2FBB0D6500E776C0 /* Build configuration list for PBXNativeTarget "TipNotificationExtension" */;
+			buildPhases = (
+				B307BD492FBB0D6400E776C0 /* Sources */,
+				B307BD4A2FBB0D6400E776C0 /* Frameworks */,
+				B307BD4B2FBB0D6400E776C0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B307BD532FBB0D6500E776C0 /* TipNotificationExtension */,
+			);
+			name = TipNotificationExtension;
+			packageProductDependencies = (
+			);
+			productName = TipNotificationExtension;
+			productReference = B307BD4D2FBB0D6400E776C0 /* TipNotificationExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		B3FBDA372EF02BCC00198DD6 /* One Kick */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B3FBDA432EF02BCE00198DD6 /* Build configuration list for PBXNativeTarget "One Kick" */;
@@ -62,10 +155,12 @@
 				B3FBDA342EF02BCC00198DD6 /* Sources */,
 				B3FBDA352EF02BCC00198DD6 /* Frameworks */,
 				B3FBDA362EF02BCC00198DD6 /* Resources */,
+				B307BD612FBB0D6500E776C0 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B307BD5B2FBB0D6500E776C0 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				B3FBDA3A2EF02BCC00198DD6 /* One Kick */,
@@ -86,9 +181,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2610;
+				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
+					B307BD4C2FBB0D6400E776C0 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 					B3FBDA372EF02BCC00198DD6 = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
@@ -112,11 +210,19 @@
 			projectRoot = "";
 			targets = (
 				B3FBDA372EF02BCC00198DD6 /* One Kick */,
+				B307BD4C2FBB0D6400E776C0 /* TipNotificationExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		B307BD4B2FBB0D6400E776C0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B3FBDA362EF02BCC00198DD6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -127,6 +233,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B307BD492FBB0D6400E776C0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B3FBDA342EF02BCC00198DD6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -136,7 +249,73 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		B307BD5B2FBB0D6500E776C0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B307BD4C2FBB0D6400E776C0 /* TipNotificationExtension */;
+			targetProxy = B307BD5A2FBB0D6500E776C0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		B307BD5F2FBB0D6500E776C0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TipNotificationExtension/TipNotificationExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FCGG86Y2QQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TipNotificationExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TipNotificationExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Benni.One-Kick.TipNotificationExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B307BD602FBB0D6500E776C0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TipNotificationExtension/TipNotificationExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FCGG86Y2QQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TipNotificationExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = TipNotificationExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Benni.One-Kick.TipNotificationExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		B3FBDA412EF02BCE00198DD6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -189,7 +368,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -246,7 +425,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -261,12 +440,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "One Kick/One Kick.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = FCGG86Y2QQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "One Kick benötigt Zugriff auf die Kamera, damit du ein Logo für deine Community aufnehmen kannst.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "One Kick benötigt Zugriff auf deine Fotobibliothek, um ein Logo für deine Community auszuwählen.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -283,9 +464,8 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -294,12 +474,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "One Kick/One Kick.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = FCGG86Y2QQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "One Kick benötigt Zugriff auf die Kamera, damit du ein Logo für deine Community aufnehmen kannst.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "One Kick benötigt Zugriff auf deine Fotobibliothek, um ein Logo für deine Community auszuwählen.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -316,15 +498,23 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		B307BD5E2FBB0D6500E776C0 /* Build configuration list for PBXNativeTarget "TipNotificationExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B307BD5F2FBB0D6500E776C0 /* Debug */,
+				B307BD602FBB0D6500E776C0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		B3FBDA332EF02BCC00198DD6 /* Build configuration list for PBXProject "One Kick" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

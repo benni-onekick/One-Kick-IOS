@@ -11,6 +11,7 @@ import SwiftUI
 
 struct PlayerSearchSheet: View {
     let leagueName:    String
+    let category:      String
     let currentAnswer: String
     let onSelect:      (String) -> Void
     let searchPlayers: (String) async -> [PlayerBasicInfo]
@@ -21,10 +22,11 @@ struct PlayerSearchSheet: View {
     @State private var isSearching   = false
     @State private var selectedName: String
 
-    init(leagueName: String, currentAnswer: String,
+    init(leagueName: String, category: String = "Torschützenkönig", currentAnswer: String,
          onSelect: @escaping (String) -> Void,
          searchPlayers: @escaping (String) async -> [PlayerBasicInfo]) {
         self.leagueName    = leagueName
+        self.category      = category
         self.currentAnswer = currentAnswer
         self.onSelect      = onSelect
         self.searchPlayers = searchPlayers
@@ -110,7 +112,7 @@ struct PlayerSearchSheet: View {
                     }
                 }
             }
-            .navigationTitle("Torschützenkönig – \(leagueName)")
+            .navigationTitle("\(category) – \(leagueName)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -173,7 +175,7 @@ struct TeamPickerSheet: View {
                                 Text("\(entry.rank).")
                                     .font(.caption.bold()).foregroundColor(.gray)
                                     .frame(width: 24, alignment: .trailing)
-                                Text(entry.team.name).foregroundColor(.white)
+                                Text(entry.team.name).foregroundColor(.white).lineLimit(1)
                                 Spacer()
                                 if entry.team.name == selected {
                                     Image(systemName: "checkmark.circle.fill")
@@ -314,7 +316,7 @@ struct TableRankingSheet: View {
                     Text("\(entry.rank).")
                         .font(.caption.bold()).foregroundColor(.gray)
                         .frame(width: 24, alignment: .trailing)
-                    Text(entry.team.name).foregroundColor(.white)
+                    Text(entry.team.name).foregroundColor(.white).lineLimit(1)
                     Spacer()
                     Image(systemName: "plus.circle")
                         .foregroundColor(.oneKickNeon.opacity(0.6))

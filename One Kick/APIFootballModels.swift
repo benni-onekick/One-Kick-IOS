@@ -102,31 +102,59 @@ struct StandingGoals: Codable {
     let against: Int
 }
 
-// MARK: - Predictions
+// MARK: - Wettquoten
 
-struct APIPredictionResponse: Codable {
-    let response: [PredictionWrapper]
+struct MatchWinnerOdds {
+    let home: Double   // Dezimalquote, z.B. 1.85
+    let draw: Double
+    let away: Double
 }
 
-struct PredictionWrapper: Codable {
-    let predictions: MatchPrediction
+struct APIOddsResponse: Codable {
+    let response: [OddsFixtureWrapper]
 }
 
-struct MatchPrediction: Codable {
-    let winner: PredictionWinner?
-    let percent: PredictionPercent
-    let advice: String?
+struct OddsFixtureWrapper: Codable {
+    let bookmakers: [OddsBookmaker]
+
+    private enum CodingKeys: String, CodingKey { case bookmakers }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        bookmakers = (try? c.decode([OddsBookmaker].self, forKey: .bookmakers)) ?? []
+    }
 }
 
-struct PredictionWinner: Codable {
-    let id: Int?
-    let name: String?
+struct OddsBookmaker: Codable {
+    let id: Int
+    let name: String
+    let bets: [OddsBet]
+
+    private enum CodingKeys: String, CodingKey { case id, name, bets }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id   = try c.decode(Int.self,    forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        bets = (try? c.decode([OddsBet].self, forKey: .bets)) ?? []
+    }
 }
 
-struct PredictionPercent: Codable {
-    let home: String   // z.B. "68%"
-    let draw: String
-    let away: String
+struct OddsBet: Codable {
+    let id: Int
+    let name: String
+    let values: [OddsValue]
+
+    private enum CodingKeys: String, CodingKey { case id, name, values }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id     = try c.decode(Int.self,       forKey: .id)
+        name   = try c.decode(String.self,    forKey: .name)
+        values = (try? c.decode([OddsValue].self, forKey: .values)) ?? []
+    }
+}
+
+struct OddsValue: Codable {
+    let value: String
+    let odd: String
 }
 
 // MARK: - Injuries
@@ -215,4 +243,86 @@ struct PlayerData: Codable {
 struct PlayerBasicInfo: Codable, Identifiable {
     let id: Int
     let name: String
+}
+
+// MARK: - Match Events
+
+struct APIEventsResponse: Codable {
+    let response: [MatchEvent]
+}
+
+struct MatchEvent: Codable, Identifiable {
+    var id: String { "\(time.elapsed ?? 0)-\(type)-\(player?.name ?? "")-\(assist?.name ?? "")" }
+    let time: EventTime
+    let team: EventTeam
+    let player: EventNameRef?
+    let assist: EventNameRef?
+    let type: String
+    let detail: String
+    let comments: String?
+}
+
+struct EventTime: Codable {
+    let elapsed: Int?
+    let extra: Int?
+}
+
+struct EventTeam: Codable {
+    let id: Int
+    let name: String
+    let logo: String
+}
+
+struct EventNameRef: Codable {
+    let id: Int?
+    let name: String?
+}
+
+// MARK: - Match Statistics
+
+struct APIStatisticsResponse: Codable {
+    let response: [TeamStatistics]
+}
+
+struct TeamStatistics: Codable, Identifiable {
+    var id: Int { team.id }
+    let team: EventTeam
+    let statistics: [StatEntry]
+
+    func value(for type: String) -> String {
+        statistics.first(where: { $0.type == type })?.displayValue ?? "-"
+    }
+}
+
+struct StatEntry: Codable {
+    let type: String
+    private let value: AnyStat?
+
+    var displayValue: String { value?.description ?? "-" }
+
+    enum CodingKeys: String, CodingKey { case type, value }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type = try c.decode(String.self, forKey: .type)
+        if let i = try? c.decode(Int.self, forKey: .value) {
+            value = AnyStat(i)
+        } else if let s = try? c.decode(String.self, forKey: .value) {
+            value = AnyStat(s)
+        } else {
+            value = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(type, forKey: .type)
+        try c.encodeIfPresent(value?.description, forKey: .value)
+    }
+}
+
+private struct AnyStat {
+    let description: String
+    init(_ i: Int)    { description = "\(i)" }
+    init(_ s: String) { description = s }
 }

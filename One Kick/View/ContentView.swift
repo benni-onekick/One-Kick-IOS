@@ -9,8 +9,9 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var manager: CommunityManager // Zugriff auf die Steuerung
-    
+    @EnvironmentObject var manager: CommunityManager
+    @Environment(\.scenePhase) private var scenePhase
+
     init() {
         // Design-Anpassung für die TabBar (schwarzer Hintergrund)
         let appearance = UITabBarAppearance()
@@ -66,7 +67,12 @@ struct ContentView: View {
                 }
                 .tag(4)
         }
-        .tint(.oneKickNeon) // Färbt das aktive Icon Neon
+        .tint(.oneKickNeon)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                manager.appBecameActive = .now
+            }
+        }
     }
 }
 

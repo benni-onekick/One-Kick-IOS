@@ -58,33 +58,41 @@ struct LeagueMapper {
         case "Frauen WM":                   return 6
         case "Frauen EM":                   return 1191
 
+        // SONSTIGES
+        case "Relegation":                  return 9999
+
         default: return 78
         }
     }
 
     static func getMaxMatchday(for name: String) -> Int {
         switch name {
-        case "1. Bundesliga", "2. Bundesliga":  return 34
+        case "1. Bundesliga", "Bundesliga", "2. Bundesliga":  return 34
         case "3. Liga":                         return 38
         case "Premier League",
              "La Liga",
              "Serie A",
              "Süper Lig":                       return 38
         case "Österreich Liga":                 return 32
-        case "MLS",
-             "Saudi Pro League":                return 34
+        case "MLS":                             return 35
+        case "Saudi Pro League":                return 34
         case "Ligue 1",
              "Eredivisie",
              "Liga Portugal":                   return 34
-        case "Super League":                    return 36
+        case "Super League":                    return 33
         case "1. Frauen-Bundesliga":            return 26
         case "Champions League",
              "Europa League",
              "Conference League",
-             "Frauen Champions League":         return 8
+             "Frauen Champions League":         return 0
         default:
             return 0
         }
+    }
+
+    static func getMaxMatchday(for leagueID: Int) -> Int {
+        guard let name = getName(for: leagueID) else { return 0 }
+        return getMaxMatchday(for: name)
     }
 
     static func getName(for id: Int) -> String? {
@@ -120,6 +128,7 @@ struct LeagueMapper {
         case 525:  return "Frauen Champions League"
         case 6:    return "Frauen WM"
         case 1191: return "Frauen EM"
+        case 9999: return "Relegation"
         default:   return nil
         }
     }
@@ -129,6 +138,215 @@ struct LeagueMapper {
         switch leagueID {
         case 253: return 2026  // MLS
         default:  return APIConfig.currentSeason
+        }
+    }
+
+    // Ligen mit echtem ligaübergreifendem Relegations-/Aufstiegs-Playoff
+    static func hasRelegationPlayoff(leagueID: Int) -> Bool {
+        let leagues: Set<Int> = [
+            78,   // 1. Bundesliga
+            79,   // 2. Bundesliga
+            80,   // 3. Liga
+            88,   // Eredivisie
+            61,   // Ligue 1
+            207,  // Super League (Schweiz)
+            218,  // Österreich Liga
+            94,   // Liga Portugal
+            203,  // Süper Lig
+            82    // 1. Frauen-Bundesliga
+        ]
+        return leagues.contains(leagueID)
+    }
+
+    // Qualifikationszone eines Ranges für eine bestimmte Liga
+    static func qualificationZone(rank: Int, leagueID: Int) -> QualificationZone? {
+        switch leagueID {
+        case 78: // 1. Bundesliga
+            switch rank {
+            case 1...4:  return .championsLeague
+            case 5...6:  return .europaLeague
+            case 7:      return .conferenceLeague
+            case 16:     return .relegationPlayoff
+            case 17...18: return .relegation
+            default:     return nil
+            }
+        case 79: // 2. Bundesliga
+            switch rank {
+            case 1...2:  return .promotion
+            case 3:      return .promotionPlayoff
+            case 16:     return .relegationPlayoff
+            case 17...18: return .relegation
+            default:     return nil
+            }
+        case 80: // 3. Liga
+            switch rank {
+            case 1...3:  return .promotion
+            case 4:      return .promotionPlayoff
+            case 17:     return .relegationPlayoff
+            case 18...20: return .relegation
+            default:     return nil
+            }
+        case 39: // Premier League
+            switch rank {
+            case 1...4:  return .championsLeague
+            case 5:      return .europaLeague
+            case 6:      return .conferenceLeague
+            case 18...20: return .relegation
+            default:     return nil
+            }
+        case 140: // La Liga
+            switch rank {
+            case 1...4:  return .championsLeague
+            case 5...6:  return .europaLeague
+            case 7:      return .conferenceLeague
+            case 18...20: return .relegation
+            default:     return nil
+            }
+        case 135: // Serie A
+            switch rank {
+            case 1...4:  return .championsLeague
+            case 5...6:  return .europaLeague
+            case 7:      return .conferenceLeague
+            case 18...20: return .relegation
+            default:     return nil
+            }
+        case 61: // Ligue 1
+            switch rank {
+            case 1...3:  return .championsLeague
+            case 4...5:  return .europaLeague
+            case 6:      return .conferenceLeague
+            case 16:     return .relegationPlayoff
+            case 17...18: return .relegation
+            default:     return nil
+            }
+        case 203: // Süper Lig
+            switch rank {
+            case 1...2:  return .championsLeague
+            case 3:      return .europaLeague
+            case 4...5:  return .conferenceLeague
+            case 16:     return .relegationPlayoff
+            case 17...18: return .relegation
+            default:     return nil
+            }
+        case 88: // Eredivisie
+            switch rank {
+            case 1:      return .championsLeague
+            case 2...5:  return .europaLeague
+            case 16...17: return .relegationPlayoff
+            case 18:     return .relegation
+            default:     return nil
+            }
+        case 94: // Liga Portugal
+            switch rank {
+            case 1...3:  return .championsLeague
+            case 4...5:  return .europaLeague
+            case 6:      return .conferenceLeague
+            case 16:     return .relegationPlayoff
+            case 17...18: return .relegation
+            default:     return nil
+            }
+        case 207: // Super League (CH)
+            switch rank {
+            case 1:      return .championsLeague
+            case 2...3:  return .europaLeague
+            case 4:      return .conferenceLeague
+            case 9:      return .relegationPlayoff
+            case 10:     return .relegation
+            default:     return nil
+            }
+        case 218: // Österreich Liga
+            switch rank {
+            case 1:      return .championsLeague
+            case 2...3:  return .europaLeague
+            case 4:      return .conferenceLeague
+            case 10:     return .relegationPlayoff
+            case 11...12: return .relegation
+            default:     return nil
+            }
+        case 82: // 1. Frauen-Bundesliga
+            switch rank {
+            case 1...2:  return .championsLeague
+            case 11...12: return .relegation
+            default:     return nil
+            }
+        default:
+            return nil
+        }
+    }
+
+    // Gewünschte Anzeigereihenfolge: BL1/2/3 → Frauen-BL → DFB-Pokal → UCL/UEL/UECL →
+    // Top-Ligen → weitere nationale → intl. Ligen → intl. Pokale → Nationalteams
+    static func sortOrder(for name: String) -> Int {
+        switch name {
+        case "1. Bundesliga":            return 0
+        case "2. Bundesliga":            return 1
+        case "3. Liga":                  return 2
+        case "1. Frauen-Bundesliga":     return 3
+        case "DFB-Pokal":                return 4
+        case "Champions League":         return 5
+        case "Europa League":            return 6
+        case "Conference League":        return 7
+        case "Frauen Champions League":  return 8
+        case "Premier League":           return 10
+        case "La Liga":                  return 11
+        case "Serie A":                  return 12
+        case "Ligue 1":                  return 13
+        case "Eredivisie":               return 14
+        case "Liga Portugal":            return 15
+        case "Super League":             return 16
+        case "Süper Lig":                return 17
+        case "Österreich Liga":          return 18
+        case "MLS":                      return 20
+        case "Saudi Pro League":         return 21
+        case "Relegation":               return 22
+        case "FA Cup":                   return 25
+        case "Copa del Rey":             return 26
+        case "Coppa Italia":             return 27
+        case "Coupe de France":          return 28
+        case "Weltmeisterschaft":        return 30
+        case "Europameisterschaft":      return 31
+        case "Nations League":           return 32
+        case "WM Qualifikation":         return 33
+        case "EM Qualifikation":         return 34
+        case "Frauen WM":                return 35
+        case "Frauen EM":                return 36
+        default:                         return 99
+        }
+    }
+}
+
+// MARK: - Qualification Zones
+
+enum QualificationZone: Hashable {
+    case championsLeague
+    case europaLeague
+    case conferenceLeague
+    case promotion
+    case promotionPlayoff
+    case relegationPlayoff
+    case relegation
+
+    var color: Color {
+        switch self {
+        case .championsLeague:   return Color(red: 0.1,  green: 0.46, blue: 0.9)
+        case .europaLeague:      return Color(red: 1.0,  green: 0.47, blue: 0.0)
+        case .conferenceLeague:  return Color(red: 0.0,  green: 0.70, blue: 0.48)
+        case .promotion:         return Color(red: 0.0,  green: 0.70, blue: 0.48)
+        case .promotionPlayoff:  return Color(red: 0.6,  green: 0.85, blue: 0.0)
+        case .relegationPlayoff: return Color(red: 1.0,  green: 0.65, blue: 0.0)
+        case .relegation:        return Color(red: 0.85, green: 0.20, blue: 0.2)
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .championsLeague:   return "Champions League"
+        case .europaLeague:      return "Europa League"
+        case .conferenceLeague:  return "Conference League"
+        case .promotion:         return "Aufstieg"
+        case .promotionPlayoff:  return "Aufstiegs-Playoff"
+        case .relegationPlayoff: return "Relegations-Playoff"
+        case .relegation:        return "Abstieg"
         }
     }
 }
@@ -147,21 +365,107 @@ class CommunityLeaguesViewModel: ObservableObject {
         guard let cid = community.id else { return }
         let bettedIds = await betManager.loadBets(communityId: cid)
         let liveStatuses: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
+        let playoffKw = ["relegation", "playoff", "play-off", "barrage", "qualifying",
+                         "promotion", "qualification", "playout", "maintien"]
+        let intraLeaguePatterns = ["championship round", "relegation round",
+                                   "championship group", "relegation group"]
+        func isPlayoff(_ round: String, lid: Int = 0) -> Bool {
+            let lower = round.lowercased()
+            if !LeagueMapper.hasRelegationPlayoff(leagueID: lid) {
+                if intraLeaguePatterns.contains(where: { lower.contains($0) }) { return false }
+            }
+            return playoffKw.contains { lower.contains($0) }
+        }
+        func matchdayNum(_ round: String) -> Int {
+            round.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                .compactMap { Int($0) }.last ?? 0
+        }
+
+        var playoffRoundsByLeagueId: [Int: Set<String>] = [:]
+        var playoffMatchesByLeagueId: [Int: [MatchData]] = [:]
 
         for leagueName in community.activeLeagues {
             let lid = LeagueMapper.getID(for: leagueName)
+            guard lid != 9999 else { continue }
             let max = LeagueMapper.getMaxMatchday(for: leagueName)
             let result = await api.determineDisplayRoundWithMatches(for: lid, maxMatchday: max)
 
+            func isEffectivelyPlayoff(_ r: String) -> Bool {
+                let lower = r.lowercased()
+                if !LeagueMapper.hasRelegationPlayoff(leagueID: lid) {
+                    if intraLeaguePatterns.contains(where: { lower.contains($0) }) { return false }
+                }
+                return isPlayoff(r, lid: lid) || (max > 0 && matchdayNum(r) > max)
+            }
+            var classifiedPlayoffRounds: Set<String> = []
+            if max > 0 && LeagueMapper.hasRelegationPlayoff(leagueID: lid) {
+                let allRounds = await api.fetchAllRounds(for: lid)
+                let (_, rawPlayoff) = api.classifyRounds(allRounds, maxMatchday: max)
+                let intra = ["championship round", "championship group", "relegation group"]
+                for r in rawPlayoff where !intra.contains(where: { r.lowercased().contains($0) }) {
+                    classifiedPlayoffRounds.insert(r)
+                }
+                if !classifiedPlayoffRounds.isEmpty {
+                    playoffRoundsByLeagueId[lid] = classifiedPlayoffRounds
+                }
+            }
+            func isRelegationOrPlayoff(_ r: String) -> Bool {
+                classifiedPlayoffRounds.contains(r) || isEffectivelyPlayoff(r)
+            }
+            let allMatchesArePlayoff = !result.matches.isEmpty &&
+                result.matches.allSatisfy { isRelegationOrPlayoff($0.league.round ?? result.round) }
+            guard !isRelegationOrPlayoff(result.round) && !allMatchesArePlayoff else {
+                openTipsPerLeague[leagueName] = 0
+                if LeagueMapper.hasRelegationPlayoff(leagueID: lid) {
+                    playoffMatchesByLeagueId[lid] = result.matches
+                }
+                continue
+            }
+
             let open = result.matches.filter {
                 ["NS", "TBD"].contains($0.fixture.status.short) &&
-                !bettedIds.contains($0.fixture.id)
+                !bettedIds.contains($0.fixture.id) &&
+                !isRelegationOrPlayoff($0.league.round ?? "")
             }.count
             openTipsPerLeague[leagueName] = open
 
             if result.matches.contains(where: { liveStatuses.contains($0.fixture.status.short) }) {
                 liveLeagues.insert(leagueName)
             }
+        }
+
+        if community.activeLeagues.contains("Relegation") {
+            var relegationOpen = 0
+            for leagueName in community.activeLeagues {
+                let rLid = LeagueMapper.getID(for: leagueName)
+                guard rLid != 9999, LeagueMapper.hasRelegationPlayoff(leagueID: rLid) else { continue }
+                let cached = playoffMatchesByLeagueId[rLid] ?? []
+                if !cached.isEmpty {
+                    relegationOpen += cached.filter {
+                        ["NS", "TBD"].contains($0.fixture.status.short) && !bettedIds.contains($0.fixture.id)
+                    }.count
+                } else {
+                    let dateFmt = DateFormatter(); dateFmt.dateFormat = "yyyy-MM-dd"
+                    let fromStr = dateFmt.string(from: Date().addingTimeInterval(-21 * 86400))
+                    let toStr   = dateFmt.string(from: Date().addingTimeInterval( 21 * 86400))
+                    let fetched = await api.fetchMatchesByDateRange(for: rLid, from: fromStr, to: toStr)
+                    let knownRounds = playoffRoundsByLeagueId[rLid]
+                    let maxMd = LeagueMapper.getMaxMatchday(for: leagueName)
+                    relegationOpen += fetched.filter { m in
+                        guard ["NS", "TBD"].contains(m.fixture.status.short),
+                              !bettedIds.contains(m.fixture.id) else { return false }
+                        let round = m.league.round ?? ""
+                        if let known = knownRounds, !known.isEmpty { return known.contains(round) }
+                        if maxMd > 0 {
+                            let num = round.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                                .compactMap { Int($0) }.last ?? 0
+                            if num > maxMd { return true }
+                        }
+                        return playoffKw.contains { round.lowercased().contains($0) }
+                    }.count
+                }
+            }
+            openTipsPerLeague["Relegation"] = relegationOpen
         }
     }
 }
@@ -199,7 +503,7 @@ struct CommunityLeaguesView: View {
                 // LIGEN LISTE
                 ScrollView {
                     VStack(spacing: 15) {
-                        ForEach(Array(community.activeLeagues).sorted(), id: \.self) { leagueName in
+                        ForEach(community.activeLeagues.sorted { LeagueMapper.sortOrder(for: $0) < LeagueMapper.sortOrder(for: $1) }, id: \.self) { leagueName in
                             let leagueID    = LeagueMapper.getID(for: leagueName)
                             let maxMatchday = LeagueMapper.getMaxMatchday(for: leagueName)
                             let openCount   = vm.openTipsPerLeague[leagueName]

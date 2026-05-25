@@ -15,6 +15,8 @@ struct LeagueLeaderboardView: View {
     let leagueName: String
     let rankings: [UserPointsEntry]
     let currentUserId: String?
+    let community: CommunityModel
+    var hasLive: Bool = false
 
     var body: some View {
         ZStack {
@@ -25,6 +27,7 @@ struct LeagueLeaderboardView: View {
                         Text("Tabelle")
                             .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
                             .tracking(1).textCase(.uppercase)
+                        if hasLive { LiveBadge() }
                         Spacer()
                         Text(leagueName).font(.system(size: 11)).foregroundColor(.gray.opacity(0.6))
                             .lineLimit(1)
@@ -43,48 +46,28 @@ struct LeagueLeaderboardView: View {
                         let ranks = tiedRanks(for: rankings)
                         ForEach(Array(rankings.enumerated()), id: \.element.id) { i, entry in
                             let isCurrentUser = entry.id == currentUserId
-                            NavigationLink(destination: PlayerMatchTipsView(
-                                entry: entry,
-                                leagueName: leagueName,
-                                isCurrentUser: isCurrentUser
-                            )) {
-                                HStack(spacing: 12) {
-                                    Text("\(ranks[i])")
-                                        .font(.system(size: 16, weight: .black))
-                                        .foregroundColor(rankColor(ranks[i]))
-                                        .frame(width: 28, alignment: .center)
-
-                                    Text(entry.displayName)
-                                        .font(.system(size: 15, weight: isCurrentUser ? .bold : .regular))
-                                        .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
-                                        .lineLimit(1)
-
-                                    Spacer()
-
-                                    HStack(spacing: 3) {
-                                        Text("\(entry.points)")
-                                            .font(.system(size: 18, weight: .black))
-                                            .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
-                                        Text("Pkt")
-                                            .font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
-                                    }
-
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
+                            if isCurrentUser {
+                                NavigationLink(destination: LeagueBettingView(
+                                    community: community,
+                                    leagueID: LeagueMapper.getID(for: leagueName),
+                                    leagueName: leagueName,
+                                    maxMatchday: LeagueMapper.getMaxMatchday(for: leagueName)
+                                )) {
+                                    leagueRowContent(entry: entry, rank: ranks[i], isCurrentUser: true)
                                 }
-                                .padding(.horizontal, 16).padding(.vertical, 14)
-                                .background(isCurrentUser
-                                    ? Color.oneKickNeon.opacity(0.06)
-                                    : Color.oneKickDarkGray.opacity(0.6))
-                                .cornerRadius(16)
-                                .overlay(RoundedRectangle(cornerRadius: 16)
-                                    .stroke(isCurrentUser
-                                        ? Color.oneKickNeon.opacity(0.4)
-                                        : Color.white.opacity(0.06),
-                                            lineWidth: isCurrentUser ? 1.5 : 1))
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 16)
+                            } else {
+                                NavigationLink(destination: PlayerMatchTipsView(
+                                    entry: entry,
+                                    leagueName: leagueName,
+                                    isCurrentUser: false
+                                )) {
+                                    leagueRowContent(entry: entry, rank: ranks[i], isCurrentUser: false)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 16)
                             }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, 16)
                         }
                     }
                     Spacer(minLength: 80)
@@ -96,12 +79,50 @@ struct LeagueLeaderboardView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    @ViewBuilder
+    private func leagueRowContent(entry: UserPointsEntry, rank: Int, isCurrentUser: Bool) -> some View {
+        HStack(spacing: 12) {
+            Text("\(rank)")
+                .font(.system(size: 16, weight: .black))
+                .foregroundColor(rankColor(rank))
+                .frame(width: 28, alignment: .center)
+
+            AvatarView(displayName: entry.displayName,
+                       photoBase64: entry.photoBase64,
+                       size: 34)
+
+            Text(entry.displayName)
+                .font(.system(size: 15, weight: isCurrentUser ? .bold : .regular))
+                .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
+                .lineLimit(1)
+
+            Spacer()
+
+            HStack(spacing: 3) {
+                Text("\(entry.totalPoints)")
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
+                Text("Pkt")
+                    .font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 14)
+        .background(isCurrentUser ? Color.oneKickNeon.opacity(0.06) : Color.oneKickDarkGray.opacity(0.6))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16)
+            .stroke(isCurrentUser ? Color.oneKickNeon.opacity(0.4) : Color.white.opacity(0.06),
+                    lineWidth: isCurrentUser ? 1.5 : 1))
+    }
+
     private func tiedRanks(for entries: [UserPointsEntry]) -> [Int] {
         var ranks: [Int] = []
         for (i, entry) in entries.enumerated() {
             if i == 0 {
                 ranks.append(1)
-            } else if entry.points == entries[i - 1].points {
+            } else if entry.totalPoints == entries[i - 1].totalPoints {
                 ranks.append(ranks[i - 1])
             } else {
                 ranks.append(i + 1)
@@ -125,6 +146,43 @@ struct LeagueLeaderboardView: View {
 struct PlayerDetailView: View {
     let entry: UserPointsEntry
     let isCurrentUser: Bool
+    let community: CommunityModel
+
+    private let liveStatuses: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
+
+    private func isLeagueLive(_ league: LeaguePointsEntry) -> Bool {
+        league.matchTips.contains { liveStatuses.contains($0.match.fixture.status.short) }
+    }
+
+    @ViewBuilder
+    private func leagueRowContent(_ league: LeaguePointsEntry) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: "soccerball")
+                .font(.system(size: 16)).foregroundColor(.gray)
+                .frame(width: 36, height: 36)
+                .background(Color.black.opacity(0.3)).clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(league.leagueName)
+                    .font(.subheadline).bold()
+                    .foregroundColor(.white).lineLimit(1)
+                if isLeagueLive(league) { LiveBadge() }
+            }
+
+            Spacer()
+
+            Text("\(league.points) Pkt")
+                .font(.subheadline).bold()
+                .foregroundColor(.oneKickNeon)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold()).foregroundColor(.gray)
+        }
+        .padding(16)
+        .background(Color.oneKickDarkGray).cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16)
+            .stroke(isLeagueLive(league) ? Color.red.opacity(0.4) : Color.white.opacity(0.06), lineWidth: 1))
+    }
 
     var body: some View {
         ZStack {
@@ -135,7 +193,7 @@ struct PlayerDetailView: View {
                         Text(entry.displayName)
                             .font(.title2).bold()
                             .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
-                        Text("\(entry.points) Punkte gesamt")
+                        Text("\(entry.totalPoints) Punkte gesamt")
                             .font(.subheadline).foregroundColor(.gray)
                     }
                     .padding(.vertical, 12)
@@ -149,37 +207,24 @@ struct PlayerDetailView: View {
                     .padding(.horizontal, 20).padding(.bottom, 4)
 
                     ForEach(entry.leagueBreakdown) { league in
-                        NavigationLink(destination: PlayerMatchTipsView(
-                            entry: entry,
-                            leagueName: league.leagueName,
-                            isCurrentUser: isCurrentUser
-                        )) {
-                            HStack(spacing: 14) {
-                                Image(systemName: "soccerball")
-                                    .font(.system(size: 16)).foregroundColor(.gray)
-                                    .frame(width: 36, height: 36)
-                                    .background(Color.black.opacity(0.3)).clipShape(Circle())
-
-                                Text(league.leagueName)
-                                    .font(.subheadline).bold()
-                                    .foregroundColor(.white).lineLimit(1)
-
-                                Spacer()
-
-                                Text("\(league.points) Pkt")
-                                    .font(.subheadline).bold()
-                                    .foregroundColor(.oneKickNeon)
-
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.bold()).foregroundColor(.gray)
-                            }
-                            .padding(16)
-                            .background(Color.oneKickDarkGray).cornerRadius(16)
-                            .overlay(RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.white.opacity(0.06), lineWidth: 1))
+                        if isCurrentUser {
+                            NavigationLink(destination: LeagueBettingView(
+                                community: community,
+                                leagueID: LeagueMapper.getID(for: league.leagueName),
+                                leagueName: league.leagueName,
+                                maxMatchday: LeagueMapper.getMaxMatchday(for: league.leagueName)
+                            )) { leagueRowContent(league) }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 16)
+                        } else {
+                            NavigationLink(destination: PlayerMatchTipsView(
+                                entry: entry,
+                                leagueName: league.leagueName,
+                                isCurrentUser: isCurrentUser
+                            )) { leagueRowContent(league) }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 16)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16)
                     }
 
                     Spacer(minLength: 80)
@@ -199,45 +244,172 @@ struct PlayerMatchTipsView: View {
     let leagueName: String
     let isCurrentUser: Bool
 
-    private var tips: [MatchTipEntry] {
-        entry.leagueBreakdown.first(where: { $0.leagueName == leagueName })?.matchTips ?? []
+    @State private var currentGroupIndex: Int? = nil
+    @State private var allLeagueMatches: [MatchData] = []
+    @State private var isLoading = true
+    @State private var loadFailed = false
+    @State private var liveMatchForInfo: MatchData?
+
+    private let api = APIFootballService()
+
+    // Getippte Spiele des Spielers: fixtureId → (home, away)
+    private var tipMap: [Int: (home: Int, away: Int)] {
+        let matchTips = entry.leagueBreakdown.first(where: { $0.leagueName == leagueName })?.matchTips ?? []
+        var dict: [Int: (home: Int, away: Int)] = [:]
+        for t in matchTips { dict[t.id] = (home: t.tipHome, away: t.tipAway) }
+        return dict
     }
 
-    private var grouped: [(round: String, tips: [MatchTipEntry])] {
-        var dict: [String: [MatchTipEntry]] = [:]
-        for tip in tips {
-            let r = tip.match.league.round ?? "Spieltag"
-            dict[r, default: []].append(tip)
+    // Alle Spiele: API-Daten + getippte Matches aus Entry (immer vorhanden) zusammengeführt
+    // → zeigt Tipps auch wenn der API-Call fehlschlug (Rate-Limiting, offline etc.)
+    private var grouped: [(round: String, matches: [MatchData])] {
+        var matchDict: [Int: MatchData] = [:]
+        // Basis: getippte Matches aus entry (rate-limit-sicher, immer verfügbar)
+        let tippedMatches = entry.leagueBreakdown
+            .first(where: { $0.leagueName == leagueName })?
+            .matchTips.map { $0.match } ?? []
+        for m in tippedMatches { matchDict[m.fixture.id] = m }
+        // API-Daten überschreiben (frischer, haben alle Spiele)
+        for m in allLeagueMatches { matchDict[m.fixture.id] = m }
+
+        var dict: [String: [MatchData]] = [:]
+        for m in matchDict.values {
+            let r = m.league.round ?? "Spieltag"
+            dict[r, default: []].append(m)
         }
-        return dict.map { (round: $0.key, tips: $0.value.sorted { $0.match.fixture.date < $1.match.fixture.date }) }
-                   .sorted { $0.round < $1.round }
+        // Innerhalb einer Runde chronologisch (Fr → Sa → So), Runden aufsteigend
+        // Leere Runden werden herausgefiltert (API-Platzhalter ohne Spiele)
+        return dict.map { (round: $0.key, matches: $0.value.sorted { $0.fixture.date < $1.fixture.date }) }
+                   .filter { !$0.matches.isEmpty }
+                   .sorted { roundNumber($0.round) < roundNumber($1.round) }
+    }
+
+    private func roundNumber(_ round: String) -> Int {
+        let num = round.components(separatedBy: " ").compactMap { Int($0) }.last ?? 0
+        // Relegation/Playoff-Runden kommen nach allen regulären Spieltagen
+        if isRelegationRound(round) { return 1000 + num }
+        return num
+    }
+
+    private func isRelegationRound(_ round: String) -> Bool {
+        let keywords = ["relegation", "playoff", "play-off", "play off", "playout",
+                        "promotion", "barrage", "qualification", "qualifying",
+                        "championship", "barrages", "maintien"]
+        let lower = round.lowercased()
+        return keywords.contains { lower.contains($0) }
+    }
+
+    private func roundDisplayLabel(_ round: String) -> String {
+        let lower = round.lowercased()
+        if lower.contains("relegation") {
+            let num = round.components(separatedBy: " ").compactMap { Int($0) }.last ?? 0
+            switch num {
+            case 1: return "Relegation · Hinspiel"
+            case 2: return "Relegation · Rückspiel"
+            default: return "Relegation"
+            }
+        }
+        return round
+    }
+
+    private var currentRoundIsRelegation: Bool {
+        guard effectiveIndex < grouped.count else { return false }
+        return isRelegationRound(grouped[effectiveIndex].round)
+    }
+
+    // Standardmäßig letzter (aktuellster) Spieltag; clamped wenn API weniger Runden liefert
+    private var effectiveIndex: Int {
+        let defaultIndex = max(0, grouped.count - 1)
+        guard let idx = currentGroupIndex else { return defaultIndex }
+        return min(idx, grouped.count - 1)
     }
 
     var body: some View {
         ZStack {
             Color.oneKickBlack.ignoresSafeArea()
             ScrollView {
-                LazyVStack(spacing: 16) {
-                    ForEach(grouped, id: \.round) { group in
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(group.round)
-                                .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
-                                .tracking(1).textCase(.uppercase)
-                                .padding(.horizontal, 20)
-
-                            ForEach(group.tips) { tip in
-                                PlayerTipMatchRow(tip: tip, isCurrentUser: isCurrentUser)
-                            }
-                        }
-                    }
-
-                    if tips.isEmpty {
+                LazyVStack(spacing: 12) {
+                    if grouped.isEmpty && isLoading {
+                        ProgressView().tint(.oneKickNeon)
+                            .frame(maxWidth: .infinity).padding(.top, 60)
+                    } else if grouped.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "sportscourt").font(.system(size: 40)).foregroundColor(.gray)
-                            Text("Keine Tipps in dieser Liga")
+                            Text("Keine Spiele gefunden")
                                 .font(.headline).foregroundColor(.white)
+                            Text(loadFailed
+                                 ? "Daten konnten nicht geladen werden."
+                                 : "Noch keine Tipps oder Spiele in dieser Liga verfügbar.")
+                                .font(.caption).foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                            if loadFailed {
+                                Button(action: {
+                                    Task { await loadAllMatches() }
+                                }) {
+                                    Text("Erneut versuchen")
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, 16).padding(.vertical, 8)
+                                        .background(Color.oneKickNeon)
+                                        .foregroundColor(.black)
+                                        .cornerRadius(8)
+                                }
+                                .padding(.top, 4)
+                            }
                         }
-                        .frame(maxWidth: .infinity).padding(.top, 60)
+                        .frame(maxWidth: .infinity).padding(.top, 60).padding(.horizontal)
+                    } else {
+                        // Spieltag-Navigation
+                        VStack(spacing: 8) {
+                            if currentRoundIsRelegation {
+                                Text("RELEGATION")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.orange).tracking(1)
+                                    .padding(.horizontal, 8).padding(.vertical, 3)
+                                    .background(Color.orange.opacity(0.15))
+                                    .cornerRadius(6)
+                            } else {
+                                Text("SPIELTAG")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.oneKickNeon).tracking(1)
+                            }
+                            HStack(spacing: 20) {
+                                Button(action: {
+                                    HapticManager.instance.impact(style: .light)
+                                    currentGroupIndex = max(0, effectiveIndex - 1)
+                                }) {
+                                    CircleButton(icon: "chevron.left", enabled: effectiveIndex > 0)
+                                }
+                                .disabled(effectiveIndex <= 0)
+
+                                Text(roundDisplayLabel(grouped[effectiveIndex].round))
+                                    .font(.headline).bold()
+                                    .foregroundColor(currentRoundIsRelegation ? .orange : .white)
+                                    .multilineTextAlignment(.center)
+                                    .frame(minWidth: 140)
+
+                                Button(action: {
+                                    HapticManager.instance.impact(style: .light)
+                                    currentGroupIndex = min(grouped.count - 1, effectiveIndex + 1)
+                                }) {
+                                    CircleButton(icon: "chevron.right", enabled: effectiveIndex < grouped.count - 1)
+                                }
+                                .disabled(effectiveIndex >= grouped.count - 1)
+                            }
+                        }
+                        .padding(.vertical, 10)
+
+                        let currentMatches = grouped[effectiveIndex].matches
+                        ForEach(currentMatches, id: \.fixture.id) { match in
+                            let isLive = ["1H","2H","HT","ET","P","LIVE"].contains(match.fixture.status.short)
+                            let isStarted = !["NS", "TBD"].contains(match.fixture.status.short)
+                            let myTip: (home: Int, away: Int)? = (isCurrentUser || isStarted) ? tipMap[match.fixture.id] : nil
+
+                            PlayerTipMatchRow(
+                                match: match,
+                                myTip: myTip,
+                                onLiveInfo: isLive ? { liveMatchForInfo = match } : nil
+                            )
+                        }
                     }
 
                     Spacer(minLength: 80)
@@ -247,80 +419,41 @@ struct PlayerMatchTipsView: View {
         }
         .navigationTitle(leagueName)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await loadAllMatches() }
+        .sheet(item: $liveMatchForInfo) { LiveMatchView(match: $0) }
+    }
+
+    private func loadAllMatches() async {
+        isLoading = true
+        loadFailed = false
+        let lid = LeagueMapper.getID(for: leagueName)
+        let from = "\(APIConfig.currentSeason)-01-01"
+        // Saison-Ende: API liefert nur season=currentSeason Spiele – erweitertes Datum ist safe
+        let to = "\(APIConfig.currentSeason + 1)-06-30"
+
+        // Parallel: historische Matches + kommende Runden (Relegation-Rückspiel etc.)
+        async let historical = api.fetchMatchesByDateRange(for: lid, from: from, to: to)
+        async let upcoming = api.fetchCurrentAndUpcomingMatches(for: lid)
+        let (hist, upc) = await (historical, upcoming)
+
+        var merged: [Int: MatchData] = [:]
+        for m in hist { merged[m.fixture.id] = m }
+        for m in upc  { merged[m.fixture.id] = m }  // upcoming überschreibt mit frischeren Daten
+        allLeagueMatches = Array(merged.values)
+        loadFailed = allLeagueMatches.isEmpty
+        isLoading = false
     }
 }
 
 // MARK: - Einzelne Match-Tipp-Zeile
 
 struct PlayerTipMatchRow: View {
-    let tip: MatchTipEntry
-    let isCurrentUser: Bool
-
-    private var shouldReveal: Bool { isCurrentUser || tip.isStarted }
-
-    private var isLive: Bool {
-        ["1H", "2H", "HT", "ET", "P", "LIVE"].contains(tip.match.fixture.status.short)
-    }
+    let match: MatchData
+    let myTip: (home: Int, away: Int)?
+    var onLiveInfo: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(tip.match.teams.home.name)
-                        .font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
-                        .lineLimit(1)
-                    if isLive {
-                        Text("LIVE")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 5).padding(.vertical, 2)
-                            .background(Color.red).cornerRadius(4)
-                    }
-                }
-                Text(tip.match.teams.away.name)
-                    .font(.system(size: 13)).foregroundColor(.gray)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            if shouldReveal {
-                VStack(alignment: .trailing, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("\(tip.tipHome):\(tip.tipAway)")
-                            .font(.system(size: 14, weight: .bold)).foregroundColor(.white)
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(Color.black.opacity(0.4)).cornerRadius(8)
-
-                        if let aH = tip.match.goals.home, let aA = tip.match.goals.away {
-                            Text("\(aH):\(aA)")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(isLive ? .orange : .oneKickNeon)
-                                .padding(.horizontal, 8).padding(.vertical, 4)
-                                .background((isLive ? Color.orange : Color.oneKickNeon).opacity(0.12))
-                                .cornerRadius(8)
-                        }
-                    }
-
-                    if tip.points > 0 {
-                        Text("+\(tip.points) Pkt")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.oneKickNeon)
-                    }
-                }
-            } else {
-                HStack(spacing: 4) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 11)).foregroundColor(.gray)
-                    Text("Gesperrt")
-                        .font(.system(size: 11)).foregroundColor(.gray)
-                }
-            }
-        }
-        .padding(.horizontal, 16).padding(.vertical, 12)
-        .background(Color.oneKickDarkGray.opacity(0.6)).cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14)
-            .stroke(tip.points > 0 ? Color.oneKickNeon.opacity(0.2) : Color.white.opacity(0.05), lineWidth: 1))
-        .padding(.horizontal, 16)
+        ApiMatchRow(match: match, myTip: myTip, onLiveInfo: onLiveInfo)
+            .padding(.horizontal, 16)
     }
 }

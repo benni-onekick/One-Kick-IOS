@@ -36,6 +36,16 @@ class BetManager {
         print("✅ Tipp gespeichert: Fixture \(fixtureId) in Community \(communityId)")
     }
 
+    func saveBetToMultipleCommunities(fixtureId: Int, communityIds: [String], homeGoals: Int, awayGoals: Int) async {
+        await withTaskGroup(of: Void.self) { group in
+            for cid in communityIds {
+                group.addTask {
+                    try? await self.saveBet(fixtureId: fixtureId, communityId: cid, homeGoals: homeGoals, awayGoals: awayGoals)
+                }
+            }
+        }
+    }
+
     func loadBets(communityId: String) async -> Set<Int> {
         guard let userId = Auth.auth().currentUser?.uid else { return [] }
 

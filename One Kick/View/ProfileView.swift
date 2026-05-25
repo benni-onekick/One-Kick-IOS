@@ -5,6 +5,8 @@
 
 import SwiftUI
 import FirebaseAuth
+import UserNotifications
+import PhotosUI
 
 // MARK: - ProfileView
 
@@ -12,9 +14,12 @@ struct ProfileView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var authManager: AuthManager
 
+    @ObservedObject private var userSettings = UserSettings.shared
+
     @State private var showEditName = false
     @State private var showPasswordResetAlert = false
     @State private var passwordResetSent = false
+    @State private var photoItem: PhotosPickerItem? = nil
 
     private var initials: String {
         let name = authManager.displayName ?? authManager.userEmail ?? "?"
@@ -30,7 +35,9 @@ struct ProfileView: View {
                     VStack(spacing: 16) {
                         profileHeader
                         profilSection
+                        tippingSection
                         settingsSection
+                        legalSection
                         logoutButton
                         Spacer(minLength: 40)
                     }
@@ -75,14 +82,31 @@ struct ProfileView: View {
 
     private var profileHeader: some View {
         VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.oneKickNeon.opacity(0.15))
-                    .frame(width: 80, height: 80)
-                    .overlay(Circle().stroke(Color.oneKickNeon.opacity(0.4), lineWidth: 1.5))
-                Text(initials)
-                    .font(.system(size: 30, weight: .black))
-                    .foregroundColor(.oneKickNeon)
+            PhotosPicker(selection: $photoItem, matching: .images) {
+                ZStack(alignment: .bottomTrailing) {
+                    AvatarView(
+                        displayName: authManager.displayName ?? authManager.userEmail ?? "?",
+                        photoBase64: userSettings.photoBase64,
+                        size: 80
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(Color.oneKickNeon.opacity(0.5), lineWidth: 2)
+                    )
+
+                    Circle()
+                        .fill(Color.oneKickNeon)
+                        .frame(width: 26, height: 26)
+                        .overlay(
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.black)
+                        )
+                        .offset(x: 2, y: 2)
+                }
+            }
+            .onChange(of: photoItem) { _, item in
+                Task { await processPickedPhoto(item) }
             }
 
             VStack(spacing: 4) {
@@ -92,6 +116,8 @@ struct ProfileView: View {
                 }
                 Text(authManager.userEmail ?? "")
                     .font(.caption).foregroundColor(.gray)
+                Text("Foto tippen zum Ändern")
+                    .font(.caption2).foregroundColor(.gray.opacity(0.6))
             }
         }
         .frame(maxWidth: .infinity)
@@ -113,6 +139,89 @@ struct ProfileView: View {
                 rowDivider
                 NavigationLink(destination: FavoriteSettingsView()) {
                     rowContent(title: "Lieblingsligen & -teams", icon: "star.fill")
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color.oneKickDarkGray)
+            .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Tippen-Sektion
+
+    private var tippingSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionLabel("Tippen")
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 13))
+                        .foregroundColor(.oneKickNeon)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Übergreifendes Tippen")
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                        Text("Tipp automatisch in allen Communities mit gleicher Liga speichern")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $userSettings.crossCommunityTipping)
+                        .labelsHidden()
+                        .tint(.oneKickNeon)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                rowDivider
+                HStack(spacing: 12) {
+                    Image(systemName: "percent")
+                        .font(.system(size: 13))
+                        .foregroundColor(.oneKickNeon)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Wettquoten anzeigen")
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                        Text("Quoten von Wettanbietern in der Spielübersicht einblenden")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $userSettings.showOdds)
+                        .labelsHidden()
+                        .tint(.oneKickNeon)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                rowDivider
+                NavigationLink(destination: NotificationSettingsView()) {
+                    rowContent(title: "Tipperinnerungen", icon: "bell.fill")
+                }
+                .buttonStyle(.plain)
+            }
+            .background(Color.oneKickDarkGray)
+            .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Rechtliches
+
+    private var legalSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionLabel("Rechtliches")
+            VStack(spacing: 0) {
+                NavigationLink(destination: ImpressumView()) {
+                    rowContent(title: "Impressum", icon: "doc.text.fill")
+                }
+                .buttonStyle(.plain)
+                rowDivider
+                NavigationLink(destination: PrivacyPolicyView()) {
+                    rowContent(title: "Datenschutz", icon: "lock.shield.fill")
                 }
                 .buttonStyle(.plain)
             }
@@ -199,6 +308,38 @@ struct ProfileView: View {
             .padding(.leading, 56)
     }
 
+    private func processPickedPhoto(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let uiImage = UIImage(data: data) else { return }
+
+        // Auf 120×120px verkleinern und als JPEG komprimieren (~3-8KB)
+        let size = CGSize(width: 120, height: 120)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let square = renderer.image { _ in
+            let side = min(uiImage.size.width, uiImage.size.height)
+            let cropOrigin = CGPoint(
+                x: (uiImage.size.width - side) / 2,
+                y: (uiImage.size.height - side) / 2
+            )
+            let cropRect = CGRect(origin: cropOrigin, size: CGSize(width: side, height: side))
+            guard let cgImage = uiImage.cgImage?.cropping(to:
+                CGRect(x: cropOrigin.x * uiImage.scale,
+                       y: cropOrigin.y * uiImage.scale,
+                       width: side * uiImage.scale,
+                       height: side * uiImage.scale))
+            else {
+                uiImage.draw(in: CGRect(origin: .zero, size: size))
+                return
+            }
+            UIImage(cgImage: cgImage, scale: uiImage.scale, orientation: uiImage.imageOrientation)
+                .draw(in: CGRect(origin: .zero, size: size))
+            _ = cropRect
+        }
+        guard let jpeg = square.jpegData(compressionQuality: 0.6) else { return }
+        userSettings.photoBase64 = jpeg.base64EncodedString()
+    }
+
     private func sendPasswordReset() {
         guard let email = authManager.userEmail else { return }
         authManager.sendPasswordReset(email: email) { _ in
@@ -208,6 +349,126 @@ struct ProfileView: View {
                 passwordResetSent = false
             }
         }
+    }
+}
+
+// MARK: - Tipperinnerungen
+
+struct NotificationSettingsView: View {
+    @State private var authStatus: UNAuthorizationStatus = .notDetermined
+    @State private var selectedMinutes: Set<Int> = ReminderInterval.load()
+
+    var body: some View {
+        ZStack {
+            Color.oneKickBlack.ignoresSafeArea()
+            ScrollView {
+                VStack(spacing: 16) {
+                    if authStatus != .authorized {
+                        permissionBanner
+                    }
+                    if authStatus == .authorized {
+                        reminderSection
+                    }
+                    Spacer(minLength: 40)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+            }
+        }
+        .navigationTitle("Tipperinnerungen")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await refreshStatus() }
+    }
+
+    // MARK: - Banner (Berechtigung fehlt)
+
+    private var permissionBanner: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(authStatus == .denied
+                 ? "Benachrichtigungen deaktiviert"
+                 : "Benachrichtigungen aktivieren")
+                .font(.headline).bold().foregroundColor(.white)
+
+            Text(authStatus == .denied
+                 ? "Du hast Benachrichtigungen für One Kick deaktiviert. Öffne die Einstellungen, um sie wieder zu aktivieren."
+                 : "Erlaube Benachrichtigungen, damit One Kick dich erinnern kann, wenn du noch Tipps abgeben musst.")
+                .font(.subheadline).foregroundColor(.gray)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button(action: {
+                if authStatus == .denied {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } else {
+                    Task {
+                        _ = await NotificationManager.shared.requestPermission()
+                        await refreshStatus()
+                    }
+                }
+            }) {
+                Text(authStatus == .denied ? "Einstellungen öffnen" : "Benachrichtigungen erlauben")
+                    .font(.subheadline).bold().foregroundColor(.black)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(Color.oneKickNeon).cornerRadius(12)
+            }
+        }
+        .padding(16)
+        .background(Color.oneKickDarkGray).cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
+    }
+
+    // MARK: - Erinnerungszeiten (Mehrfachauswahl)
+
+    private var reminderSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Erinnerung vor Anpfiff")
+                .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
+                .tracking(0.5).textCase(.uppercase).padding(.leading, 4)
+
+            VStack(spacing: 0) {
+                ForEach(Array(ReminderInterval.allCases.enumerated()), id: \.element.id) { i, interval in
+                    let isSelected = selectedMinutes.contains(interval.rawValue)
+                    Button(action: { toggle(interval) }) {
+                        HStack(spacing: 14) {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 20))
+                                .foregroundColor(isSelected ? .oneKickNeon : .gray)
+                            Text(interval.label)
+                                .font(.subheadline)
+                                .foregroundColor(.white)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
+                    if i < ReminderInterval.allCases.count - 1 {
+                        Divider().background(Color.white.opacity(0.06)).padding(.leading, 16)
+                    }
+                }
+            }
+            .background(Color.oneKickDarkGray).cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
+
+            Text("Mehrere Zeiten möglich. Du wirst nur erinnert, wenn du noch nicht getippt hast. Erinnerungen sind lautlos.")
+                .font(.caption).foregroundColor(.gray).padding(.leading, 4)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func toggle(_ interval: ReminderInterval) {
+        HapticManager.instance.impact(style: .light)
+        if selectedMinutes.contains(interval.rawValue) {
+            selectedMinutes.remove(interval.rawValue)
+        } else {
+            selectedMinutes.insert(interval.rawValue)
+        }
+        ReminderInterval.save(selectedMinutes)
+    }
+
+    private func refreshStatus() async {
+        authStatus = await NotificationManager.shared.authorizationStatus()
     }
 }
 
