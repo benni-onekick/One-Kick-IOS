@@ -165,12 +165,6 @@ struct FavoriteSettingsView: View {
 
     private func favoriteTeamChip(team: FavoriteTeam) -> some View {
         HStack(spacing: 6) {
-            AsyncImage(url: URL(string: team.logo)) { phase in
-                if let img = phase.image { img.resizable().scaledToFit() }
-                else { Circle().fill(Color.black.opacity(0.2)) }
-            }
-            .frame(width: 18, height: 18)
-
             Text(team.name)
                 .font(.caption.bold())
                 .foregroundColor(.black)
@@ -201,12 +195,6 @@ struct FavoriteSettingsView: View {
                     .font(.caption.bold())
                     .foregroundColor(.gray)
                     .frame(width: 24, alignment: .trailing)
-
-                AsyncImage(url: URL(string: entry.team.logo)) { phase in
-                    if let img = phase.image { img.resizable().scaledToFit() }
-                    else { Circle().fill(Color.gray.opacity(0.3)) }
-                }
-                .frame(width: 24, height: 24)
 
                 Text(entry.team.name)
                     .font(.subheadline)

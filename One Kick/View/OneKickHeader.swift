@@ -7,6 +7,7 @@ import SwiftUI
 
 struct OneKickHeader: View {
     var onProfile: (() -> Void)?
+    @ObservedObject private var userSettings = UserSettings.shared
 
     var body: some View {
         HStack {
@@ -16,9 +17,19 @@ struct OneKickHeader: View {
             Spacer()
             if let onProfile {
                 Button(action: onProfile) {
-                    Image(systemName: "person.crop.circle")
-                        .font(.system(size: 28))
-                        .foregroundColor(.white)
+                    if let b64 = userSettings.photoBase64,
+                       let data = Data(base64Encoded: b64),
+                       let uiImg = UIImage(data: data) {
+                        Image(uiImage: uiImg)
+                            .resizable().scaledToFill()
+                            .frame(width: 32, height: 32)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                    } else {
+                        Image(systemName: "person.crop.circle")
+                            .font(.system(size: 28))
+                            .foregroundColor(.white)
+                    }
                 }
             }
         }

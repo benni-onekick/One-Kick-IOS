@@ -41,7 +41,8 @@ let koLeagueNames: Set<String> = [
 func bonusCategoriesForLeague(_ leagueName: String, activeCategorySet: Set<String>) -> [String] {
     let isKO = koLeagueNames.contains(leagueName)
     var cats: [String] = isKO
-        ? ["Finalisten tippen", "Halbfinalisten tippen"]
+        ? ["Finalisten tippen", "Halbfinalisten tippen", "Torschützenkönig", "Meiste Vorlagen",
+           "Meiste Tore (Team)", "Meiste Gegentore"]
         : ["Torschützenkönig", "Meiste Vorlagen", "Meiste Tore (Team)", "Meiste Gegentore", "Endtabelle"]
     cats += ["Meiste Aluminium-Treffer", "Meiste Karten", "Meiste Zu-Null-Spiele"]
     return cats.filter { activeCategorySet.contains($0) }
@@ -61,6 +62,10 @@ struct BonusLeagueCard: View {
         if isKO {
             result.append(("trophy.fill",           "Finalisten tippen",      .yellow))
             result.append(("medal.fill",            "Halbfinalisten tippen",  Color(white: 0.75)))
+            result.append(("person.fill",           "Torschützenkönig",       .oneKickNeon))
+            result.append(("figure.stand",          "Meiste Vorlagen",        .cyan))
+            result.append(("arrow.up.right",        "Meiste Tore (Team)",     .orange))
+            result.append(("arrow.down.right",      "Meiste Gegentore",       .red.opacity(0.8)))
         } else {
             result.append(("person.fill",           "Torschützenkönig",       .oneKickNeon))
             result.append(("figure.stand",          "Meiste Vorlagen",        .cyan))
@@ -151,7 +156,8 @@ struct BonusAnswerCard: View {
 
     private var categories: [String] {
         var cats: [String] = isKO
-            ? ["Finalisten tippen", "Halbfinalisten tippen"]
+            ? ["Finalisten tippen", "Halbfinalisten tippen", "Torschützenkönig", "Meiste Vorlagen",
+               "Meiste Tore (Team)", "Meiste Gegentore"]
             : ["Torschützenkönig", "Meiste Vorlagen", "Meiste Tore (Team)", "Meiste Gegentore", "Endtabelle"]
         cats += ["Meiste Aluminium-Treffer", "Meiste Karten", "Meiste Zu-Null-Spiele"]
         guard let enabled = enabledCategories else { return cats }

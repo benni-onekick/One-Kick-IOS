@@ -4,6 +4,9 @@
 //
 
 import SwiftUI
+import PhotosUI
+import FirebaseAuth
+import FirebaseFirestore
 
 struct CommunitySettingsView: View {
     let community: CommunityModel
@@ -18,12 +21,22 @@ struct CommunitySettingsView: View {
     @State private var showBonusFill = false
     @State private var showBonusResults = false
     @State private var codeCopied = false
+    @State private var showLeaveConfirm = false
+    @State private var selectedPhoto: PhotosPickerItem? = nil
+    @State private var isSavingPhoto = false
+    @State private var communityPhotoBase64: String?
+    @State private var showTransferAdmin = false
+    @State private var transferMembers: [(userId: String, displayName: String)] = []
+    @State private var isLoadingTransfer = false
+    @State private var pendingNewAdmin: (userId: String, displayName: String)?
+    @State private var showTransferConfirm = false
 
     init(community: CommunityModel) {
         self.community = community
         _groupName = State(initialValue: community.name)
         _inviteCode = State(initialValue: community.inviteCode ?? "—")
         _selectedLeagues = State(initialValue: community.activeLeagues)
+        _communityPhotoBase64 = State(initialValue: community.photoBase64)
         // nil → alle Kategorien aktiv (= kompletter Satz)
         _selectedBonusCategories = State(
             initialValue: community.activeBonusCategories.map { Set($0) }
@@ -32,7 +45,7 @@ struct CommunitySettingsView: View {
     }
 
     var shareMessage: String {
-        "Komm in meine One Kick Tipprunde! Tippe mit uns die Saison.\n\nCode: \(inviteCode)\n\nLade die App hier: www.onekick.app"
+        "Komm in meine One Kick Tipprunde! ⚽\n\nCommunity beitreten:\nhttps://benni-onekick.github.io/join?code=\(inviteCode)\n\nOneKick herunterladen:\nhttps://apps.apple.com/de/app/one-kick/id6773107845"
     }
 
     var body: some View {
@@ -41,6 +54,53 @@ struct CommunitySettingsView: View {
                 Color.oneKickBlack.ignoresSafeArea()
 
                 List {
+                    // --- FOTO (nur Admin) ---
+                    if community.isCreatedByUser {
+                        Section(header: sectionHeader("Community-Foto")) {
+                            HStack {
+                                Spacer()
+                                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                    ZStack(alignment: .bottomTrailing) {
+                                        Group {
+                                            if let b64 = communityPhotoBase64,
+                                               let data = Data(base64Encoded: b64),
+                                               let img = UIImage(data: data) {
+                                                Image(uiImage: img)
+                                                    .resizable().scaledToFill()
+                                                    .frame(width: 80, height: 80)
+                                                    .clipShape(Circle())
+                                            } else {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(Color.oneKickDarkGray)
+                                                        .frame(width: 80, height: 80)
+                                                    Image(systemName: "person.3.fill")
+                                                        .font(.title2).foregroundColor(.gray)
+                                                }
+                                            }
+                                        }
+                                        if isSavingPhoto {
+                                            ProgressView()
+                                                .tint(.oneKickNeon)
+                                                .offset(x: 4, y: 4)
+                                        } else {
+                                            Image(systemName: "camera.circle.fill")
+                                                .font(.title2)
+                                                .foregroundColor(.oneKickNeon)
+                                                .offset(x: 4, y: 4)
+                                        }
+                                    }
+                                }
+                                .onChange(of: selectedPhoto) { _, item in
+                                    Task { await processAndSaveCommunityPhoto(item) }
+                                }
+                                Spacer()
+                            }
+                            .padding(.vertical, 8)
+                            .listRowBackground(Color.oneKickDarkGray)
+                        }
+                    }
+
                     // --- NAME ---
                     Section(header: sectionHeader("Allgemein")) {
                         VStack(alignment: .leading, spacing: 5) {
@@ -54,6 +114,31 @@ struct CommunitySettingsView: View {
                         }
                         .padding(.vertical, 5)
                         .listRowBackground(Color.oneKickDarkGray)
+                    }
+
+                    // --- ADMIN WEITERGEBEN (nur Admin) ---
+                    if community.isCreatedByUser {
+                        Section(header: sectionHeader("Admin")) {
+                            Button(action: {
+                                HapticManager.instance.impact(style: .medium)
+                                showTransferAdmin = true
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Admin weitergeben")
+                                            .font(.headline).foregroundColor(.white)
+                                        Text("Anderes Mitglied zum Admin ernennen")
+                                            .font(.caption).foregroundColor(.gray)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "person.badge.key.fill")
+                                        .foregroundColor(.oneKickNeon)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .padding(.vertical, 5)
+                            .listRowBackground(Color.oneKickDarkGray)
+                        }
                     }
 
                     // --- WETTBEWERBE (nur Admin) ---
@@ -73,6 +158,7 @@ struct CommunitySettingsView: View {
                                     Spacer()
                                     Image(systemName: "chevron.right").foregroundColor(.gray)
                                 }
+                                .contentShape(Rectangle())
                             }
                             .padding(.vertical, 5)
                             .listRowBackground(Color.oneKickDarkGray)
@@ -132,6 +218,7 @@ struct CommunitySettingsView: View {
                                     Image(systemName: "person.badge.plus")
                                         .foregroundColor(.oneKickNeon)
                                 }
+                                .contentShape(Rectangle())
                             }
                             .padding(.vertical, 5)
                             .listRowBackground(Color.oneKickDarkGray)
@@ -151,6 +238,7 @@ struct CommunitySettingsView: View {
                                     Image(systemName: "checkmark.seal.fill")
                                         .foregroundColor(.oneKickNeon)
                                 }
+                                .contentShape(Rectangle())
                             }
                             .padding(.vertical, 5)
                             .listRowBackground(Color.oneKickDarkGray)
@@ -179,10 +267,12 @@ struct CommunitySettingsView: View {
                                     Image(systemName: codeCopied ? "checkmark.circle.fill" : "doc.on.doc.fill")
                                         .font(.title2)
                                         .foregroundColor(codeCopied ? .green : .white)
+                                        .frame(width: 44, height: 44)
                                 }.buttonStyle(PlainButtonStyle())
                                 ShareLink(item: shareMessage) {
                                     Image(systemName: "square.and.arrow.up.fill")
                                         .font(.title2).foregroundColor(.oneKickNeon)
+                                        .frame(width: 44, height: 44)
                                 }.buttonStyle(PlainButtonStyle())
                             }
                         }
@@ -198,14 +288,33 @@ struct CommunitySettingsView: View {
                                 communityManager.deleteCommunity(community)
                                 dismiss()
                             }) {
-                                HStack { Image(systemName: "trash.fill"); Text("Community löschen") }
+                                HStack { Image(systemName: "trash.fill"); Text("Community löschen"); Spacer() }
                                     .foregroundColor(.red).bold()
+                                    .contentShape(Rectangle())
                             }.listRowBackground(Color.oneKickDarkGray)
                         } else {
-                            Button(action: { HapticManager.instance.notification(type: .warning); dismiss() }) {
-                                HStack { Image(systemName: "rectangle.portrait.and.arrow.right"); Text("Community verlassen") }
+                            Button(action: { showLeaveConfirm = true }) {
+                                HStack { Image(systemName: "rectangle.portrait.and.arrow.right"); Text("Community verlassen"); Spacer() }
                                     .foregroundColor(.red).bold()
-                            }.listRowBackground(Color.oneKickDarkGray)
+                                    .contentShape(Rectangle())
+                            }
+                            .listRowBackground(Color.oneKickDarkGray)
+                            .confirmationDialog(
+                                "Community verlassen?",
+                                isPresented: $showLeaveConfirm,
+                                titleVisibility: .visible
+                            ) {
+                                Button("Verlassen", role: .destructive) {
+                                    HapticManager.instance.notification(type: .warning)
+                                    Task {
+                                        await communityManager.leaveCommunity(community)
+                                        dismiss()
+                                    }
+                                }
+                                Button("Abbrechen", role: .cancel) {}
+                            } message: {
+                                Text("Du wirst aus \"\(community.name)\" entfernt und siehst die Gruppe nicht mehr.")
+                            }
                         }
                     }
                 }
@@ -240,6 +349,39 @@ struct CommunitySettingsView: View {
             .sheet(isPresented: $showBonusResults) {
                 AdminBonusResultsView(community: community)
             }
+            .onChange(of: showTransferAdmin) { _, isShowing in
+                if isShowing { Task { await loadTransferMembers() } }
+            }
+            .sheet(isPresented: $showTransferAdmin) {
+                TransferAdminSheet(
+                    members: transferMembers,
+                    isLoading: isLoadingTransfer,
+                    onSelect: { member in
+                        pendingNewAdmin = member
+                        showTransferConfirm = true
+                    }
+                )
+            }
+            .confirmationDialog(
+                "Admin weitergeben?",
+                isPresented: $showTransferConfirm,
+                titleVisibility: .visible
+            ) {
+                if let member = pendingNewAdmin {
+                    Button("\(member.displayName) zum Admin machen", role: .destructive) {
+                        Task {
+                            try? await communityManager.transferAdmin(community: community, to: member.userId)
+                            showTransferAdmin = false
+                            dismiss()
+                        }
+                    }
+                }
+                Button("Abbrechen", role: .cancel) {}
+            } message: {
+                if let member = pendingNewAdmin {
+                    Text("\(member.displayName) wird neuer Admin. Du verlierst deine Admin-Rechte.")
+                }
+            }
             .task {
                 guard community.inviteCode == nil, community.isCreatedByUser else { return }
                 if let code = try? await communityManager.generateAndSaveInviteCode(for: community) {
@@ -252,6 +394,111 @@ struct CommunitySettingsView: View {
     private func sectionHeader(_ title: String, color: Color = .gray) -> some View {
         Text(title).foregroundColor(color).font(.caption).bold()
     }
+
+    private func loadTransferMembers() async {
+        guard let myId = Auth.auth().currentUser?.uid else { return }
+        isLoadingTransfer = true
+        var result: [(userId: String, displayName: String)] = []
+        for uid in community.memberIds where uid != myId {
+            let doc = try? await Firestore.firestore().collection("users").document(uid).getDocument()
+            let name = doc?.data()?["displayName"] as? String
+                    ?? doc?.data()?["email"] as? String
+                    ?? uid
+            result.append((userId: uid, displayName: name))
+        }
+        transferMembers = result.sorted {
+            $0.displayName.localizedCompare($1.displayName) == .orderedAscending
+        }
+        isLoadingTransfer = false
+    }
+
+    private func processAndSaveCommunityPhoto(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let uiImage = UIImage(data: data) else { return }
+
+        let size = CGSize(width: 120, height: 120)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let squared = renderer.image { _ in
+            let side = min(uiImage.size.width, uiImage.size.height)
+            let scale = size.width / side
+            let xOffset = (uiImage.size.width - side) / 2
+            let yOffset = (uiImage.size.height - side) / 2
+            uiImage.draw(in: CGRect(
+                x: -xOffset * scale,
+                y: -yOffset * scale,
+                width: uiImage.size.width * scale,
+                height: uiImage.size.height * scale
+            ))
+        }
+        guard let jpeg = squared.jpegData(compressionQuality: 0.6) else { return }
+        let b64 = jpeg.base64EncodedString()
+
+        isSavingPhoto = true
+        try? await communityManager.updateCommunityPhoto(b64, for: community)
+        communityPhotoBase64 = b64
+        isSavingPhoto = false
+    }
+}
+
+// MARK: - Admin weitergeben Sheet
+
+struct TransferAdminSheet: View {
+    let members: [(userId: String, displayName: String)]
+    let isLoading: Bool
+    let onSelect: (( userId: String, displayName: String)) -> Void
+
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.oneKickBlack.ignoresSafeArea()
+
+                if isLoading {
+                    ProgressView().tint(.oneKickNeon)
+                } else if members.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "person.2.slash")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("Keine weiteren Mitglieder")
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    List(members, id: \.userId) { member in
+                        Button(action: {
+                            HapticManager.instance.impact(style: .medium)
+                            onSelect(member)
+                        }) {
+                            HStack {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.oneKickNeon)
+                                Text(member.displayName)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .listRowBackground(Color.oneKickDarkGray)
+                    }
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .navigationTitle("Neuen Admin wählen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Abbrechen") { dismiss() }
+                        .foregroundColor(.white)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Ligen verwalten
@@ -260,25 +507,17 @@ struct ManageLeaguesView: View {
     @Binding var selectedLeagues: Set<String>
     @Environment(\.dismiss) var dismiss
     @State private var showConfirmPopup = false
+    @State private var showLeaveConfirm = false
 
-    let allLeagues = [
-        // Deutscher Fußball
-        "1. Bundesliga", "2. Bundesliga", "3. Liga", "DFB-Pokal",
-        // International (Club)
-        "Champions League", "Europa League", "Conference League",
-        // Europäische Top-Ligen
-        "Premier League", "La Liga", "Serie A", "Ligue 1",
-        "Eredivisie", "Liga Portugal", "Super League", "Süper Lig", "Österreich Liga",
-        // Europäische Pokale
-        "FA Cup", "Copa del Rey", "Coppa Italia", "Coupe de France",
-        // Internationale Ligen
-        "MLS", "Saudi Pro League",
-        // Sonstiges
-        "Relegation",
-        // Nationalmannschaften
-        "Weltmeisterschaft", "Europameisterschaft", "Nations League", "WM Qualifikation", "EM Qualifikation",
-        // Frauenfußball
-        "1. Frauen-Bundesliga", "Frauen Champions League", "Frauen WM", "Frauen EM"
+    let categories: [LeagueCategory] = [
+        LeagueCategory(name: "Deutscher Fußball",       leagues: ["1. Bundesliga", "2. Bundesliga", "3. Liga", "DFB-Pokal"]),
+        LeagueCategory(name: "International (Club)",     leagues: ["Champions League", "Europa League", "Conference League"]),
+        LeagueCategory(name: "Nationalmannschaften",    leagues: ["Weltmeisterschaft", "Europameisterschaft", "Nations League", "WM Qualifikation", "EM Qualifikation"]),
+        LeagueCategory(name: "Frauenfußball",            leagues: ["1. Frauen-Bundesliga", "Frauen Champions League", "Frauen WM", "Frauen EM"]),
+        LeagueCategory(name: "Europäische Top-Ligen",   leagues: ["Premier League", "La Liga", "Serie A", "Ligue 1", "Eredivisie", "Liga Portugal", "Super League", "Süper Lig", "Österreich Liga"]),
+        LeagueCategory(name: "Internationale Ligen",     leagues: ["MLS", "Saudi Pro League"]),
+        LeagueCategory(name: "Europäische Pokale",       leagues: ["FA Cup", "Copa del Rey", "Coppa Italia", "Coupe de France"]),
+        LeagueCategory(name: "Sonstiges",                leagues: ["Relegation"])
     ]
 
     var body: some View {
@@ -304,23 +543,34 @@ struct ManageLeaguesView: View {
                         Text("Wähle die Wettbewerbe für deine Tipprunde.")
                             .font(.caption).foregroundColor(.gray).padding(.horizontal)
 
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 15)], spacing: 15) {
-                            ForEach(allLeagues, id: \.self) { league in
-                                LeagueSelectionChip(
-                                    title: league,
-                                    isSelected: selectedLeagues.contains(league),
-                                    onTap: {
-                                        HapticManager.instance.impact(style: .light)
-                                        if selectedLeagues.contains(league) {
-                                            selectedLeagues.remove(league)
-                                        } else {
-                                            selectedLeagues.insert(league)
-                                        }
+                        ForEach(categories, id: \.name) { category in
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(category.name.uppercased())
+                                    .font(.caption).bold()
+                                    .foregroundColor(.oneKickNeon)
+                                    .padding(.horizontal)
+
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 15)], spacing: 15) {
+                                    ForEach(category.leagues, id: \.self) { league in
+                                        LeagueSelectionChip(
+                                            title: league,
+                                            isSelected: selectedLeagues.contains(league),
+                                            onTap: {
+                                                HapticManager.instance.impact(style: .light)
+                                                if selectedLeagues.contains(league) {
+                                                    selectedLeagues.remove(league)
+                                                } else {
+                                                    selectedLeagues.insert(league)
+                                                }
+                                            }
+                                        )
                                     }
-                                )
+                                }
+                                .padding(.horizontal)
+
+                                Divider().background(Color.white.opacity(0.1)).padding(.horizontal)
                             }
                         }
-                        .padding(.horizontal)
                     }
                     .padding(.top, 10)
                 }

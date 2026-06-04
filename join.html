@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>One Kick – Tipprunde beitreten</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      text-align: center;
+    }
+    .logo { font-size: 64px; margin-bottom: 20px; }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: #888; font-size: 15px; margin-bottom: 28px; }
+    .code-box {
+      background: #1c1c1e;
+      border: 1px solid #2a2a2a;
+      padding: 14px 32px;
+      border-radius: 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #00ff88;
+      margin-bottom: 12px;
+    }
+    .hint { color: #555; font-size: 13px; margin-bottom: 36px; }
+    .btn {
+      display: inline-block;
+      background: #00ff88;
+      color: #000;
+      padding: 16px 40px;
+      border-radius: 28px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 17px;
+    }
+    .divider { color: #333; margin: 20px 0; font-size: 13px; }
+    .store-btn {
+      display: inline-block;
+      border: 1px solid #333;
+      color: #888;
+      padding: 12px 32px;
+      border-radius: 24px;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .status { color: #555; font-size: 13px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="logo">⚽</div>
+  <h1>One Kick Tipprunde</h1>
+  <p class="subtitle">Du wurdest eingeladen!</p>
+
+  <div class="code-box" id="code-display">—</div>
+  <p class="hint">Dein Einladungscode</p>
+
+  <p class="status" id="status">App wird geöffnet…</p>
+
+  <div id="store-section" style="display:none; flex-direction:column; align-items:center; gap:12px;">
+    <p style="color:#555; font-size:13px;">App noch nicht installiert?</p>
+    <a href="https://apps.apple.com/de/app/one-kick/id6773107845" class="btn">OneKick herunterladen</a>
+    <p style="color:#444; font-size:12px; margin-top:16px; line-height:1.6;">
+      Nach dem Download die App öffnen<br>
+      und den Code <strong id="code-inline" style="color:#00ff88">—</strong> eingeben.
+    </p>
+  </div>
+
+  <script>
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code') || '';
+    if (code) {
+      document.getElementById('code-display').textContent = code;
+      document.getElementById('code-inline').textContent = code;
+      window.location.href = 'onekick://join?code=' + encodeURIComponent(code);
+      setTimeout(function() {
+        document.getElementById('status').textContent = 'App nicht gefunden?';
+        document.getElementById('store-section').style.display = 'flex';
+      }, 2000);
+    } else {
+      document.getElementById('status').textContent = '';
+      document.getElementById('store-section').style.display = 'flex';
+    }
+  </script>
+</body>
+</html>

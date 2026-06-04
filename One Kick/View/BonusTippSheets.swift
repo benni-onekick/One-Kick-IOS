@@ -10,11 +10,12 @@ import SwiftUI
 // MARK: - Spielersuche
 
 struct PlayerSearchSheet: View {
-    let leagueName:    String
-    let category:      String
-    let currentAnswer: String
-    let onSelect:      (String) -> Void
-    let searchPlayers: (String) async -> [PlayerBasicInfo]
+    let leagueName:           String
+    let category:             String
+    let currentAnswer:        String
+    let onSelect:             (String) -> Void
+    let searchPlayers:        (String) async -> [PlayerBasicInfo]
+    let isNationalTeamLeague: Bool
 
     @Environment(\.dismiss) var dismiss
     @State private var query:        String = ""
@@ -24,13 +25,15 @@ struct PlayerSearchSheet: View {
 
     init(leagueName: String, category: String = "Torschützenkönig", currentAnswer: String,
          onSelect: @escaping (String) -> Void,
-         searchPlayers: @escaping (String) async -> [PlayerBasicInfo]) {
-        self.leagueName    = leagueName
-        self.category      = category
-        self.currentAnswer = currentAnswer
-        self.onSelect      = onSelect
-        self.searchPlayers = searchPlayers
-        _selectedName      = State(initialValue: currentAnswer)
+         searchPlayers: @escaping (String) async -> [PlayerBasicInfo],
+         isNationalTeamLeague: Bool = false) {
+        self.leagueName           = leagueName
+        self.category             = category
+        self.currentAnswer        = currentAnswer
+        self.onSelect             = onSelect
+        self.searchPlayers        = searchPlayers
+        self.isNationalTeamLeague = isNationalTeamLeague
+        _selectedName             = State(initialValue: currentAnswer)
     }
 
     var body: some View {
@@ -38,78 +41,10 @@ struct PlayerSearchSheet: View {
             ZStack {
                 Color.oneKickBlack.ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass").foregroundColor(.gray)
-                        TextField("Spieler suchen …", text: $query)
-                            .foregroundColor(.white)
-                            .onChange(of: query) { _, val in
-                                if val.count >= 3 {
-                                    Task { await runSearch(val) }
-                                } else {
-                                    results = []
-                                }
-                            }
-                        if !query.isEmpty {
-                            Button(action: { query = ""; results = [] }) {
-                                Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
-                            }
-                        }
-                    }
-                    .padding(12)
-                    .background(Color.oneKickDarkGray)
-                    .cornerRadius(12)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-
-                    if !selectedName.isEmpty {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill").foregroundColor(.oneKickNeon)
-                            Text("Aktuell: \(selectedName)").font(.caption).foregroundColor(.gray)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 10)
-                    }
-
-                    if isSearching {
-                        Spacer()
-                        ProgressView().tint(.oneKickNeon)
-                        Spacer()
-                    } else if query.count < 3 {
-                        Spacer()
-                        VStack(spacing: 8) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 40)).foregroundColor(.gray)
-                            Text("Mindestens 3 Buchstaben eingeben")
-                                .font(.caption).foregroundColor(.gray)
-                        }
-                        Spacer()
-                    } else if results.isEmpty {
-                        Spacer()
-                        Text("Kein Spieler gefunden")
-                            .font(.subheadline).foregroundColor(.gray)
-                        Spacer()
-                    } else {
-                        List(results) { player in
-                            Button(action: {
-                                selectedName = player.name
-                                onSelect(player.name)
-                                dismiss()
-                            }) {
-                                HStack {
-                                    Image(systemName: "person.fill").foregroundColor(.gray)
-                                    Text(player.name).foregroundColor(.white)
-                                    Spacer()
-                                    if player.name == selectedName {
-                                        Image(systemName: "checkmark").foregroundColor(.oneKickNeon)
-                                    }
-                                }
-                            }
-                            .listRowBackground(Color.oneKickDarkGray)
-                        }
-                        .scrollContentBackground(.hidden)
-                    }
+                if isNationalTeamLeague {
+                    manualInputView
+                } else {
+                    searchView
                 }
             }
             .navigationTitle("\(category) – \(leagueName)")
@@ -118,6 +53,163 @@ struct PlayerSearchSheet: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Abbrechen") { dismiss() }.foregroundColor(.white)
                 }
+            }
+        }
+    }
+
+    private var manualInputView: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass").foregroundColor(.gray)
+                TextField("Spieler suchen …", text: $query)
+                    .foregroundColor(.white)
+                if !query.isEmpty {
+                    Button(action: { query = "" }) {
+                        Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
+                    }
+                }
+            }
+            .padding(12)
+            .background(Color.oneKickDarkGray)
+            .cornerRadius(12)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+
+            if !selectedName.isEmpty {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(.oneKickNeon)
+                    Text("Aktuell: \(selectedName)").font(.caption).foregroundColor(.gray)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+            }
+
+            if query.count < 2 {
+                Spacer()
+                VStack(spacing: 8) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 40)).foregroundColor(.gray)
+                    Text("Mindestens 2 Buchstaben eingeben")
+                        .font(.caption).foregroundColor(.gray)
+                }
+                Spacer()
+            } else {
+                let filtered = wmAllPlayerNames.filter {
+                    $0.localizedCaseInsensitiveContains(query)
+                }
+                if filtered.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Text("Kein Spieler gefunden")
+                            .font(.subheadline).foregroundColor(.gray)
+                        Button(action: {
+                            let name = query.trimmingCharacters(in: .whitespaces)
+                            guard !name.isEmpty else { return }
+                            onSelect(name)
+                            dismiss()
+                        }) {
+                            Text("\"\(query.trimmingCharacters(in: .whitespaces))\" trotzdem speichern")
+                                .font(.caption).foregroundColor(.oneKickNeon)
+                        }
+                    }
+                    Spacer()
+                } else {
+                    List(filtered, id: \.self) { name in
+                        Button(action: {
+                            selectedName = name
+                            onSelect(name)
+                            dismiss()
+                        }) {
+                            HStack {
+                                Image(systemName: "person.fill").foregroundColor(.gray)
+                                Text(name).foregroundColor(.white)
+                                Spacer()
+                                if name == selectedName {
+                                    Image(systemName: "checkmark").foregroundColor(.oneKickNeon)
+                                }
+                            }
+                        }
+                        .listRowBackground(Color.oneKickDarkGray)
+                    }
+                    .scrollContentBackground(.hidden)
+                }
+            }
+        }
+    }
+
+    private var searchView: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass").foregroundColor(.gray)
+                TextField("Spieler suchen …", text: $query)
+                    .foregroundColor(.white)
+                    .onChange(of: query) { _, val in
+                        if val.count >= 3 {
+                            Task { await runSearch(val) }
+                        } else {
+                            results = []
+                        }
+                    }
+                if !query.isEmpty {
+                    Button(action: { query = ""; results = [] }) {
+                        Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
+                    }
+                }
+            }
+            .padding(12)
+            .background(Color.oneKickDarkGray)
+            .cornerRadius(12)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+
+            if !selectedName.isEmpty {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(.oneKickNeon)
+                    Text("Aktuell: \(selectedName)").font(.caption).foregroundColor(.gray)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+            }
+
+            if isSearching {
+                Spacer()
+                ProgressView().tint(.oneKickNeon)
+                Spacer()
+            } else if query.count < 3 {
+                Spacer()
+                VStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 40)).foregroundColor(.gray)
+                    Text("Mindestens 3 Buchstaben eingeben")
+                        .font(.caption).foregroundColor(.gray)
+                }
+                Spacer()
+            } else if results.isEmpty {
+                Spacer()
+                Text("Kein Spieler gefunden")
+                    .font(.subheadline).foregroundColor(.gray)
+                Spacer()
+            } else {
+                List(results) { player in
+                    Button(action: {
+                        selectedName = player.name
+                        onSelect(player.name)
+                        dismiss()
+                    }) {
+                        HStack {
+                            Image(systemName: "person.fill").foregroundColor(.gray)
+                            Text(player.name).foregroundColor(.white)
+                            Spacer()
+                            if player.name == selectedName {
+                                Image(systemName: "checkmark").foregroundColor(.oneKickNeon)
+                            }
+                        }
+                    }
+                    .listRowBackground(Color.oneKickDarkGray)
+                }
+                .scrollContentBackground(.hidden)
             }
         }
     }
@@ -172,10 +264,7 @@ struct TeamPickerSheet: View {
                             dismiss()
                         }) {
                             HStack(spacing: 12) {
-                                Text("\(entry.rank).")
-                                    .font(.caption.bold()).foregroundColor(.gray)
-                                    .frame(width: 24, alignment: .trailing)
-                                Text(entry.team.name).foregroundColor(.white).lineLimit(1)
+                                Text(teamNameWithFlag(entry.team.name)).foregroundColor(.white).lineLimit(1)
                                 Spacer()
                                 if entry.team.name == selected {
                                     Image(systemName: "checkmark.circle.fill")
@@ -313,10 +402,7 @@ struct TableRankingSheet: View {
                 ranking.append(entry.team.name)
             }) {
                 HStack(spacing: 12) {
-                    Text("\(entry.rank).")
-                        .font(.caption.bold()).foregroundColor(.gray)
-                        .frame(width: 24, alignment: .trailing)
-                    Text(entry.team.name).foregroundColor(.white).lineLimit(1)
+                    Text(teamNameWithFlag(entry.team.name)).foregroundColor(.white).lineLimit(1)
                     Spacer()
                     Image(systemName: "plus.circle")
                         .foregroundColor(.oneKickNeon.opacity(0.6))
@@ -351,7 +437,6 @@ struct FinalistPickerSheet: View {
     let onSave:        ([String]) -> Void
 
     @Environment(\.dismiss) var dismiss
-    @State private var selected: Set<String>
     @State private var textSlots: [String]
 
     init(leagueName: String, category: String, count: Int, teams: [StandingEntry],
@@ -363,16 +448,13 @@ struct FinalistPickerSheet: View {
         self.currentAnswer = currentAnswer
         self.onSave        = onSave
         let parts = currentAnswer.isEmpty ? [] : currentAnswer.components(separatedBy: ",")
-        _selected  = State(initialValue: Set(parts))
-        var slots  = Array(repeating: "", count: count)
+        var slots = Array(repeating: "", count: count)
         for (i, p) in parts.enumerated() where i < count { slots[i] = p }
         _textSlots = State(initialValue: slots)
     }
 
     private var isComplete: Bool {
-        teams.isEmpty
-            ? textSlots.allSatisfy { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            : selected.count == count
+        textSlots.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count == count
     }
     private var title: String { count == 2 ? "Finalisten" : "Halbfinalisten" }
 
@@ -384,7 +466,7 @@ struct FinalistPickerSheet: View {
                 if teams.isEmpty {
                     freeTextContent
                 } else {
-                    checkboxContent
+                    slotPickerContent
                 }
             }
             .navigationTitle("\(title) – \(leagueName)")
@@ -397,44 +479,29 @@ struct FinalistPickerSheet: View {
         }
     }
 
-    private var checkboxContent: some View {
+    private var slotPickerContent: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("\(selected.count) von \(count) gewählt")
-                    .font(.subheadline)
-                    .foregroundColor(isComplete ? .oneKickNeon : .white)
-                Spacer()
-                if !selected.isEmpty {
-                    Button("Zurücksetzen") { selected.removeAll() }
-                        .font(.caption).foregroundColor(.red)
-                }
-            }
-            .padding(16)
-            .background(Color.oneKickDarkGray.opacity(0.5))
-
-            List(teams, id: \.team.id) { entry in
-                let name       = entry.team.name
-                let isSelected = selected.contains(name)
-                Button(action: {
-                    HapticManager.instance.impact(style: .light)
-                    if isSelected { selected.remove(name) }
-                    else if selected.count < count { selected.insert(name) }
-                }) {
-                    HStack(spacing: 12) {
-                        Text("\(entry.rank).")
-                            .font(.caption.bold()).foregroundColor(.gray)
-                            .frame(width: 24, alignment: .trailing)
-                        Text(name).foregroundColor(.white)
+            List {
+                ForEach(0..<count, id: \.self) { i in
+                    let label = count == 2 ? "Finalist \(i + 1)" : "Halbfinalist \(i + 1)"
+                    HStack {
+                        Text(label).foregroundColor(.white)
                         Spacer()
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .oneKickNeon : .gray.opacity(0.4))
+                        Picker("", selection: $textSlots[i]) {
+                            Text("– wählen –").tag("")
+                            ForEach(teams, id: \.team.id) { entry in
+                                Text(teamNameWithFlag(entry.team.name)).tag(entry.team.name)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .tint(.oneKickNeon)
                     }
+                    .listRowBackground(Color.oneKickDarkGray)
                 }
-                .listRowBackground(Color.oneKickDarkGray)
             }
             .scrollContentBackground(.hidden)
 
-            Button(action: { onSave(Array(selected)); dismiss() }) {
+            Button(action: { onSave(textSlots.filter { !$0.isEmpty }); dismiss() }) {
                 Text("Speichern")
                     .font(.headline.bold()).foregroundColor(.black)
                     .frame(maxWidth: .infinity).padding()

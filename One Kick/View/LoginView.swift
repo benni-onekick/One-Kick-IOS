@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 
 struct LoginView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -16,6 +17,7 @@ struct LoginView: View {
     @State private var nameError:    String?
     @State private var isLoading    = false
     @State private var checkTask:   Task<Void, Never>?
+    @State private var currentNonce = ""
 
     @State private var showResetSheet   = false
     @State private var resetEmail       = ""
@@ -29,12 +31,17 @@ struct LoginView: View {
 
             ScrollView {
                 VStack(spacing: 30) {
-                    VStack(spacing: 5) {
+                    VStack(spacing: 16) {
                         Text("ONE KICK")
                             .font(.system(size: 50, weight: .black))
                             .foregroundColor(.oneKickNeon)
-                        Text(isRegistering ? "Neuen Account erstellen" : "Willkommen zurück")
-                            .foregroundColor(.gray)
+
+                        Picker("", selection: $isRegistering) {
+                            Text("Anmelden").tag(false)
+                            Text("Registrieren").tag(true)
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 20)
                     }
                     .padding(.top, 60)
 
@@ -134,18 +141,49 @@ struct LoginView: View {
                     .padding(.horizontal, 20)
                     .disabled(!canSubmit || isLoading)
 
-                    Button(action: {
-                        withAnimation {
-                            isRegistering.toggle()
-                            errorMessage = nil
-                            nameError    = nil
-                            displayName  = ""
+                    // Social Login (nur im Anmelden-Modus)
+                    if !isRegistering {
+                        HStack {
+                            Rectangle().frame(height: 0.5).foregroundColor(.gray.opacity(0.5))
+                            Text("oder").font(.caption).foregroundColor(.gray)
+                            Rectangle().frame(height: 0.5).foregroundColor(.gray.opacity(0.5))
                         }
-                    }) {
-                        Text(isRegistering
-                             ? "Ich habe schon einen Account"
-                             : "Noch keinen Account? Registrieren")
-                            .font(.caption).foregroundColor(.gray)
+                        .padding(.horizontal, 20)
+
+                        // Sign in with Apple
+                        SignInWithAppleButton(.signIn) { request in
+                            let nonce = authManager.generateNonce()
+                            currentNonce = nonce
+                            request.requestedScopes = [.fullName, .email]
+                            request.nonce = authManager.sha256Nonce(nonce)
+                        } onCompletion: { result in
+                            Task { await authManager.handleAppleSignIn(result: result, nonce: currentNonce) }
+                        }
+                        .signInWithAppleButtonStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .cornerRadius(12)
+                        .padding(.horizontal, 20)
+
+                        // Mit Google anmelden
+                        Button(action: {
+                            #if canImport(GoogleSignIn)
+                            Task { await authManager.signInWithGoogle() }
+                            #endif
+                        }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 18, weight: .medium))
+                                Text("Mit Google anmelden")
+                                    .font(.headline)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.white)
+                            .foregroundColor(.black)
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal, 20)
                     }
 
                     Spacer(minLength: 40)

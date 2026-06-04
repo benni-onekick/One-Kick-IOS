@@ -13,15 +13,31 @@ import FirebaseAuth
 // MARK: - Main View
 
 struct CommunityPunkteView: View {
+    @EnvironmentObject var lm: LanguageManager
     let community: CommunityModel
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject private var communityManager: CommunityManager
     @StateObject private var viewModel: CommunityPunkteViewModel
+    @StateObject private var chatViewModel = CommunityChatViewModel()
+    @StateObject private var pollViewModel = CommunityPollViewModel()
     @State private var selectedTab = 0
     @State private var weekOffset  = 0
     @State private var lastRefreshAt: Date = .distantPast
 
+    private var myUid: String { Auth.auth().currentUser?.uid ?? "" }
     private var currentUserId: String? { Auth.auth().currentUser?.uid }
+
+    private var chatReadKey: String { "chatRead_\(community.id ?? "")" }
+
+    private var unreadCount: Int {
+        let lastRead = UserDefaults.standard.double(forKey: chatReadKey)
+        let lastReadDate = lastRead > 0 ? Date(timeIntervalSince1970: lastRead) : Date.distantPast
+        return chatViewModel.messages.filter { msg in
+            guard msg.type != "poll", msg.userId != myUid else { return false }
+            guard let ts = msg.timestamp?.dateValue() else { return false }
+            return ts > lastReadDate
+        }.count
+    }
 
     private func refreshIfStale() {
         guard Date().timeIntervalSince(lastRefreshAt) > 30 else { return }
@@ -46,7 +62,20 @@ struct CommunityPunkteView: View {
         }
         .navigationBarHidden(true)
         .task { await viewModel.loadData() }
-        .onAppear { refreshIfStale() }
+        .onAppear {
+            refreshIfStale()
+            chatViewModel.startListening(communityId: community.id ?? "")
+            pollViewModel.startListening(communityId: community.id ?? "")
+        }
+        .onDisappear {
+            chatViewModel.stopListening()
+            pollViewModel.stopListening()
+        }
+        .onChange(of: selectedTab) { _, newTab in
+            if newTab == 3 {
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: chatReadKey)
+            }
+        }
         .onChange(of: communityManager.appBecameActive) { _, _ in refreshIfStale() }
         .task(id: "live-refresh") {
             // 60-Sekunden-Auto-Refresh: läuft auch wenn liveLeagues noch leer ist,
@@ -73,17 +102,29 @@ struct CommunityPunkteView: View {
             Spacer()
             VStack(spacing: 2) {
                 Text(community.name).font(.headline).bold().foregroundColor(.white)
-                Text("Punkte").font(.caption).foregroundColor(.gray)
+                Text(lm.t("punkteview.points")).font(.caption).foregroundColor(.gray)
             }
             Spacer()
-            Color.clear.frame(width: 40, height: 40)
+            if let code = community.inviteCode {
+                let msg = "Komm in meine One Kick Tipprunde! ⚽\n\nCommunity beitreten:\nhttps://benni-onekick.github.io/join?code=\(code)\n\nOneKick herunterladen:\nhttps://apps.apple.com/de/app/one-kick/id6773107845"
+                ShareLink(item: msg) {
+                    Image(systemName: "person.badge.plus")
+                        .font(.title3.bold())
+                        .foregroundColor(.oneKickNeon)
+                        .frame(width: 40, height: 40)
+                        .background(Color.oneKickDarkGray)
+                        .clipShape(Circle())
+                }
+            } else {
+                Color.clear.frame(width: 40, height: 40)
+            }
         }
         .padding(.horizontal).padding(.top, 10).padding(.bottom, 10)
     }
 
     // MARK: Tab Bar
 
-    private let tabTitles = ["Gesamt", "Ligen", "Bonus"]
+    private var tabTitles: [String] { [lm.t("punkteview.overall"), lm.t("punkteview.leagues"), "Bonus", "Chat"] }
 
     private var tabBar: some View {
         HStack(spacing: 0) {
@@ -92,9 +133,20 @@ struct CommunityPunkteView: View {
                     withAnimation(.easeInOut(duration: 0.2)) { selectedTab = idx }
                 }) {
                     VStack(spacing: 6) {
-                        Text(title)
-                            .font(.system(size: 12, weight: selectedTab == idx ? .bold : .regular))
-                            .foregroundColor(selectedTab == idx ? .oneKickNeon : .gray)
+                        ZStack(alignment: .topTrailing) {
+                            Text(title)
+                                .font(.system(size: 12, weight: selectedTab == idx ? .bold : .regular))
+                                .foregroundColor(selectedTab == idx ? .oneKickNeon : .gray)
+                            if title == "Chat" && unreadCount > 0 && selectedTab != idx {
+                                Text(unreadCount > 99 ? "99+" : "\(unreadCount)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 4).padding(.vertical, 2)
+                                    .background(Color.red)
+                                    .clipShape(Capsule())
+                                    .offset(x: 14, y: -6)
+                            }
+                        }
                         Rectangle().frame(height: 2)
                             .foregroundColor(selectedTab == idx ? .oneKickNeon : .clear)
                     }
@@ -112,18 +164,20 @@ struct CommunityPunkteView: View {
         switch selectedTab {
         case 0:
             if viewModel.isLoading || viewModel.isLoadingGesamt {
-                loadingPlaceholder("Saison-Punkte werden geladen...")
+                loadingPlaceholder(lm.t("punkteview.loadingPoints"))
             } else {
                 leaderboardView(entries: viewModel.totalLeaderboard, label: "Gesamte Saison")
             }
         case 1:
             if viewModel.isLoading || viewModel.isLoadingGesamt {
-                loadingPlaceholder("Ligen werden geladen...")
+                loadingPlaceholder(lm.t("general.loadingLeagues"))
             } else {
                 ligenTab
             }
-        default:
+        case 2:
             bonusTab
+        default:
+            CommunityChatView(communityId: community.id ?? "", community: community, viewModel: chatViewModel, pollViewModel: pollViewModel)
         }
     }
 
@@ -258,7 +312,7 @@ struct CommunityPunkteView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 6) {
                                 Text("🏆").font(.system(size: 16))
-                                Text(winners.count > 1 ? "Spielwoche-Sieger" : "Spielwoche-Sieger")
+                                Text(lm.t("punkteview.weeklyWinner"))
                                     .font(.caption.bold()).foregroundColor(.oneKickNeon.opacity(0.8))
                                 Spacer()
                                 Text("\(topPts) Pkt")
@@ -299,8 +353,8 @@ struct CommunityPunkteView: View {
     private var emptyPlaceholder: some View {
         VStack(spacing: 12) {
             Image(systemName: "person.3").font(.system(size: 40)).foregroundColor(.gray)
-            Text("Noch keine Tipps").font(.headline).foregroundColor(.white)
-            Text("Hier erscheint das Leaderboard, sobald Tipps abgegeben wurden.")
+            Text(lm.t("punkteview.noTips")).font(.headline).foregroundColor(.white)
+            Text(lm.t("punkteview.noLeaderboard"))
                 .font(.caption).foregroundColor(.gray).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.top, 60).padding(.horizontal)
@@ -315,11 +369,11 @@ struct CommunityPunkteView: View {
                     emptyPlaceholder
                 } else {
                     HStack {
-                        Text("Ligen")
+                        Text(lm.t("punkteview.leagues"))
                             .font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
                             .tracking(1).textCase(.uppercase)
                         Spacer()
-                        Text("Aktueller Führender")
+                        Text(lm.t("punkteview.currentLeader"))
                             .font(.system(size: 11)).foregroundColor(.gray.opacity(0.6))
                     }
                     .padding(.horizontal, 20).padding(.bottom, 4)

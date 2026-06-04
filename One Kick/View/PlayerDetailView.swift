@@ -148,6 +148,7 @@ struct PlayerDetailView: View {
     let isCurrentUser: Bool
     let community: CommunityModel
 
+    @State private var userSelectedBadges: [String] = []
     private let liveStatuses: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
 
     private func isLeagueLive(_ league: LeaguePointsEntry) -> Bool {
@@ -195,8 +196,17 @@ struct PlayerDetailView: View {
                             .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
                         Text("\(entry.totalPoints) Punkte gesamt")
                             .font(.subheadline).foregroundColor(.gray)
+
+                        if !userSelectedBadges.isEmpty {
+                            BadgesRow(badgeIds: userSelectedBadges)
+                                .padding(.top, 6)
+                        }
                     }
                     .padding(.vertical, 12)
+                    .task {
+                        let (_, selected) = await BadgeSystem.shared.loadForUser(uid: entry.id)
+                        userSelectedBadges = selected
+                    }
 
                     HStack {
                         Text("Ligen")

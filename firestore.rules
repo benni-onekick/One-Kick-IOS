@@ -16,8 +16,11 @@ service cloud.firestore {
 
     // COMMUNITIES
     match /communities/{communityId} {
+      // Mitglieder lesen ihre Community; authentifizierte User können Communities
+      // mit inviteCode lesen (nötig für die Beitritts-Query via whereField)
       allow read: if request.auth != null
-                  && request.auth.uid in resource.data.memberIds;
+                  && (request.auth.uid in resource.data.memberIds
+                      || resource.data.inviteCode != null);
 
       allow create: if request.auth != null
                     && request.resource.data.adminId == request.auth.uid
@@ -27,8 +30,20 @@ service cloud.firestore {
                     && request.resource.data.name.size() <= 100;
 
       allow update: if request.auth != null
-                    && resource.data.adminId == request.auth.uid
-                    && request.resource.data.adminId == resource.data.adminId;
+                    && (
+                      // Admin darf alles updaten (außer adminId wechseln)
+                      (resource.data.adminId == request.auth.uid
+                       && request.resource.data.adminId == resource.data.adminId)
+                      // Mitglieder dürfen sich selbst aus memberIds austragen
+                      || (request.auth.uid in resource.data.memberIds
+                          && !(request.auth.uid in request.resource.data.memberIds)
+                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds']))
+                      // Neues Mitglied tritt via inviteCode bei
+                      || (!(request.auth.uid in resource.data.memberIds)
+                          && request.auth.uid in request.resource.data.memberIds
+                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+                          && resource.data.inviteCode != null)
+                    );
 
       allow delete: if request.auth != null
                     && resource.data.adminId == request.auth.uid;
@@ -45,12 +60,15 @@ service cloud.firestore {
                       && resource.data.userId == request.auth.uid;
       }
 
-      // BONUS BETS (nur Mitglieder lesen, nur Admin schreiben)
+      // BONUS BETS (nur Mitglieder lesen, nur Admin schreiben/updaten, User darf eigenen Eintrag löschen)
       match /bonusBets/{betId} {
         allow read: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds;
-        allow write: if request.auth != null
+        allow create, update: if request.auth != null
                      && request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId;
+        allow delete: if request.auth != null
+                      && (request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId
+                          || betId == request.auth.uid);
       }
 
       // BONUS CORRECT ANSWERS (nur Mitglieder lesen, nur Admin schreiben)
@@ -59,6 +77,53 @@ service cloud.firestore {
                     && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds;
         allow write: if request.auth != null
                      && request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId;
+      }
+
+      // POLLS (Admin erstellt, Mitglieder stimmen ab)
+      match /polls/{pollId} {
+        allow read: if request.auth != null
+                    && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds;
+
+        allow create: if request.auth != null
+                      && request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId;
+
+        allow update: if request.auth != null
+                      && (
+                        // Abstimmen: nur votes-Feld (eigener userId-Key)
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes'])
+                        // Admin darf alles updaten (schließen, appliedAt setzen)
+                        || request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId
+                      );
+      }
+
+      // CHAT MESSAGES (nur Mitglieder lesen + schreiben, jeder darf melden)
+      match /messages/{messageId} {
+        allow read: if request.auth != null
+                    && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds;
+
+        allow create: if request.auth != null
+                      && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds
+                      && request.resource.data.userId == request.auth.uid
+                      && (
+                          // Normale Textnachricht
+                          (request.resource.data.text is string
+                           && request.resource.data.text.size() > 0
+                           && request.resource.data.text.size() <= 300)
+                          // Poll-Nachricht darf leeren Text haben
+                          || ('type' in request.resource.data
+                              && request.resource.data.type == 'poll')
+                      );
+
+        // Nur "reported"-Feld darf von Mitgliedern geändert werden (Melde-Funktion)
+        allow update: if request.auth != null
+                      && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reported'])
+                      && request.resource.data.reported == true;
+
+        // Nur eigene Nachrichten löschen (oder Admin)
+        allow delete: if request.auth != null
+                      && (resource.data.userId == request.auth.uid
+                          || request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId);
       }
     }
   }

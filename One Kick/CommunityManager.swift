@@ -49,6 +49,12 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
     /// Erstellzeitpunkt (für Sortierung).
     var createdAt: Date
 
+    /// Ausgewählte Spiele pro Liga (leagueName → [fixtureIds]). nil/leer = alle Spiele tippbar.
+    var selectedMatchIds: [String: [Int]]?
+
+    /// Community-Profilbild als base64-kodiertes JPEG. nil = kein Bild gesetzt.
+    var photoBase64: String?
+
     init(
         id: String? = nil,
         adminId: String? = nil,
@@ -56,7 +62,9 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
         memberIds: [String] = [],
         activeLeagues: Set<String> = [],
         inviteCode: String? = nil,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        selectedMatchIds: [String: [Int]]? = nil,
+        photoBase64: String? = nil
     ) {
         self.id = id
         self.adminId = adminId
@@ -65,6 +73,8 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
         self.activeLeagues = activeLeagues
         self.inviteCode = inviteCode
         self.createdAt = createdAt
+        self.selectedMatchIds = selectedMatchIds
+        self.photoBase64 = photoBase64
     }
 
     // MARK: Computed Properties (Drop-in-Ersatz für die alten Felder)
@@ -123,6 +133,8 @@ class CommunityManager: ObservableObject {
     @Published var errorMessage: String? = nil
     /// Wird aktualisiert sobald die App in den Vordergrund kommt → Views reagieren mit Refresh
     @Published var appBecameActive: Date = .now
+    /// Deep-Link-Code der über onekick://join?code=... empfangen wurde
+    @Published var pendingJoinCode: String? = nil
 
     // MARK: Private
 
@@ -333,6 +345,28 @@ class CommunityManager: ObservableObject {
         }
     }
 
+    /// Community-Profilbild setzen. Nur Admins.
+    func updateCommunityPhoto(_ base64: String, for community: CommunityModel) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else { throw CommunityError.notAuthenticated }
+        guard community.adminId == userId else { throw CommunityError.notAdmin }
+        guard let id = community.id else { throw CommunityError.missingId }
+        try await db.collection("communities").document(id).updateData(["photoBase64": base64])
+        if let idx = communities.firstIndex(where: { $0.id == id }) {
+            communities[idx].photoBase64 = base64
+        }
+    }
+
+    /// Admin-Rolle an ein anderes Mitglied übertragen. Nur aktueller Admin.
+    func transferAdmin(community: CommunityModel, to newAdminId: String) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else { throw CommunityError.notAuthenticated }
+        guard community.adminId == userId else { throw CommunityError.notAdmin }
+        guard let id = community.id else { throw CommunityError.missingId }
+        try await db.collection("communities").document(id).updateData(["adminId": newAdminId])
+        if let idx = communities.firstIndex(where: { $0.id == id }) {
+            communities[idx].adminId = newAdminId
+        }
+    }
+
     /// Liga komplett löschen. Nur Admins.
     func deleteCommunity(
         _ community: CommunityModel,
@@ -398,6 +432,21 @@ class CommunityManager: ObservableObject {
         try await db.collection("communities").document(doc.documentID).updateData([
             "memberIds": FieldValue.arrayUnion([userId])
         ])
+    }
+
+    func leaveCommunity(_ community: CommunityModel) async {
+        guard let userId = Auth.auth().currentUser?.uid,
+              let id = community.id else { return }
+        do {
+            try await db.collection("communities").document(id).updateData([
+                "memberIds": FieldValue.arrayRemove([userId])
+            ])
+            await MainActor.run {
+                if selectedCommunity?.id == id { selectedCommunity = nil }
+            }
+        } catch {
+            await MainActor.run { errorMessage = error.localizedDescription }
+        }
     }
 
     // MARK: - League Name Migration

@@ -134,7 +134,8 @@ struct BonusTippView: View {
     // koLeagueNames ist in BonusLeagueCard.swift (modul-weit) definiert
 
     private var activeCategorySet: Set<String> {
-        community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
+        let set = community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
+        return set.isEmpty ? Set(allBonusCategories) : set
     }
 
     init(community: CommunityModel) {
@@ -244,11 +245,12 @@ struct BonusTippView: View {
         switch sheet.category {
         case "Torschützenkönig", "Meiste Vorlagen":
             PlayerSearchSheet(
-                leagueName:    sheet.leagueName,
-                category:      sheet.category,
-                currentAnswer: vm.answers[key] ?? "",
-                onSelect:      { vm.answers[key] = $0 },
-                searchPlayers: { await vm.searchPlayers(in: sheet.leagueName, query: $0) }
+                leagueName:           sheet.leagueName,
+                category:             sheet.category,
+                currentAnswer:        vm.answers[key] ?? "",
+                onSelect:             { vm.answers[key] = $0 },
+                searchPlayers:        { await vm.searchPlayers(in: sheet.leagueName, query: $0) },
+                isNationalTeamLeague: koLeagueNames.contains(sheet.leagueName)
             )
         case "Endtabelle":
             TableRankingSheet(
@@ -346,7 +348,10 @@ struct BonusTippLeagueSection: View {
                                         Text("Noch nicht getippt")
                                             .font(.caption).foregroundColor(.gray.opacity(0.6))
                                     } else {
-                                        Text(answer)
+                                        let displayAnswer = answer.components(separatedBy: ",")
+                                            .map { localizedTeamName($0.trimmingCharacters(in: .whitespaces)) }
+                                            .joined(separator: ", ")
+                                        Text(displayAnswer)
                                             .font(.caption).foregroundColor(.oneKickNeon)
                                             .lineLimit(1)
                                     }

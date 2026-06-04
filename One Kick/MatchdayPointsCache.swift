@@ -13,17 +13,28 @@ struct MatchdayPointsCache {
     static let shared = MatchdayPointsCache()
     private init() {}
 
+    // Cache-Einträge laufen nach 36h ab → stellt sicher dass nachträglich korrigierte
+    // Ergebnisse (z.B. Live-Scores die gecacht wurden) beim nächsten Öffnen neu berechnet werden
+    private let ttl: TimeInterval = 36 * 3600
+
+    private struct CacheEntry: Codable {
+        let points: [String: Int]
+        let savedAt: Date
+    }
+
     /// Gibt gecachte Punkte zurück: [userId: points] für Runden 1..upToMatchday dieser Liga.
     func get(communityId: String, leagueId: Int, upToMatchday: Int) -> [String: Int]? {
         let key = cacheKey(communityId: communityId, leagueId: leagueId, upTo: upToMatchday)
         guard let data = UserDefaults.standard.data(forKey: key),
-              let dict = try? JSONDecoder().decode([String: Int].self, from: data) else { return nil }
-        return dict
+              let entry = try? JSONDecoder().decode(CacheEntry.self, from: data),
+              Date().timeIntervalSince(entry.savedAt) < ttl else { return nil }
+        return entry.points
     }
 
     func store(_ points: [String: Int], communityId: String, leagueId: Int, upToMatchday: Int) {
         let key = cacheKey(communityId: communityId, leagueId: leagueId, upTo: upToMatchday)
-        guard let data = try? JSONEncoder().encode(points) else { return }
+        let entry = CacheEntry(points: points, savedAt: Date())
+        guard let data = try? JSONEncoder().encode(entry) else { return }
         UserDefaults.standard.set(data, forKey: key)
     }
 

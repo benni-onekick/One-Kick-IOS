@@ -10,6 +10,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var manager: CommunityManager
+    @EnvironmentObject var lm: LanguageManager
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -39,31 +40,31 @@ struct ContentView: View {
             
             StartseiteView()
                 .tabItem {
-                    Label("Start", systemImage: "house")
+                    Label(lm.t("tab.start"), systemImage: "house")
                 }
                 .tag(0)
             
             TippenView()
                 .tabItem {
-                    Label("Tippen", systemImage: "soccerball")
+                    Label(lm.t("tab.tippen"), systemImage: "soccerball")
                 }
                 .tag(1)
             
             NewsView()
                 .tabItem {
-                    Label("News", systemImage: "newspaper")
+                    Label(lm.t("tab.news"), systemImage: "newspaper")
                 }
                 .tag(2)
             
             StatistikView()
                 .tabItem {
-                    Label("Statistik", systemImage: "chart.xyaxis.line")
+                    Label(lm.t("tab.statistik"), systemImage: "chart.xyaxis.line")
                 }
                 .tag(3)
             
             CommunityView()
                 .tabItem {
-                    Label("Community", systemImage: "person.3.fill")
+                    Label(lm.t("tab.community"), systemImage: "person.3.fill")
                 }
                 .tag(4)
         }
@@ -71,6 +72,15 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 manager.appBecameActive = .now
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { manager.pendingJoinCode != nil },
+            set: { if !$0 { manager.pendingJoinCode = nil } }
+        )) {
+            if let code = manager.pendingJoinCode {
+                JoinCommunitySheet(prefillCode: code)
+                    .environmentObject(manager)
             }
         }
     }

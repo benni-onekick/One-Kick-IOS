@@ -68,10 +68,10 @@ struct ApiMatchRow: View {
                 }
 
                 HStack(spacing: 8) {
+                    let isNational = nationalTeamLeagueIDs.contains(match.league.id)
                     // Heimteam
                     HStack(spacing: 6) {
-                        teamLogo(match.teams.home.logo)
-                        Text(match.teams.home.name)
+                        Text(isNational ? teamNameWithFlag(match.teams.home.name) : match.teams.home.name)
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                             .lineLimit(1)
@@ -86,13 +86,12 @@ struct ApiMatchRow: View {
 
                     // Auswärtsteam
                     HStack(spacing: 6) {
-                        Text(match.teams.away.name)
+                        Text(isNational ? teamNameWithFlag(match.teams.away.name) : match.teams.away.name)
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
                             .multilineTextAlignment(.trailing)
-                        teamLogo(match.teams.away.logo)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
@@ -346,16 +345,6 @@ struct ApiMatchRow: View {
         }
     }
 
-    // MARK: - Logo
-
-    @ViewBuilder
-    private func teamLogo(_ url: String) -> some View {
-        AsyncImage(url: URL(string: url)) { phase in
-            if let image = phase.image { image.resizable().scaledToFit() }
-            else { Circle().fill(Color.gray.opacity(0.3)) }
-        }
-        .frame(width: 26, height: 26)
-    }
 }
 
 struct TeamRow: View {
@@ -364,11 +353,6 @@ struct TeamRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            AsyncImage(url: URL(string: icon)) { phase in
-                if let image = phase.image { image.resizable().scaledToFit() }
-                else { Circle().fill(Color.gray.opacity(0.3)) }
-            }
-            .frame(width: 24, height: 24)
             Text(name).font(.subheadline).bold().foregroundColor(.white).lineLimit(1)
         }
     }

@@ -7,14 +7,21 @@ import UIKit
 import UserNotifications
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseMessaging
 
 class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        Messaging.messaging().delegate = self
         registerNotificationCategories()
         return true
+    }
+
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Messaging.messaging().apnsToken = deviceToken
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
@@ -78,6 +85,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             NotificationCenter.default.post(name: .tipSaved, object: nil,
                                             userInfo: nil)
         }
+    }
+}
+
+// MARK: - MessagingDelegate (FCM Token für Chat-Notifications)
+
+extension AppDelegate: MessagingDelegate {
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard let token = fcmToken,
+              let uid = Auth.auth().currentUser?.uid else { return }
+        Firestore.firestore().collection("users").document(uid)
+            .setData(["fcmToken": token], merge: true)
     }
 }
 

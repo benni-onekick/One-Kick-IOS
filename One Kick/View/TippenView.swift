@@ -75,7 +75,9 @@ class TippenViewModel: ObservableObject {
         let now = Date()
         let isoFmt = ISO8601DateFormatter()
 
-        // Einmalig alle benötigten Ligen laden (statischer upcomingCache → zweite Community ist sofort)
+        // Ligen sequenziell laden – In-Flight-Dedup in fetchCurrentAndUpcomingMatches sorgt dafür,
+        // dass TippenView StartseiteViews bereits laufende Tasks joined (zero extra API-Calls).
+        // Parallel würde Ligen vor StartseiteView starten → Rate-Limit erschöpfen → Punkte kaputt.
         var leagueMatchCache: [Int: [MatchData]] = [:]
         var allLeagueIds = Set<Int>()
         for community in communities {
@@ -94,11 +96,25 @@ class TippenViewModel: ObservableObject {
             var totalOpen = 0
             var isLive    = false
             for leagueName in community.activeLeagues {
-                let lid     = LeagueMapper.getID(for: leagueName)
-                let matches = leagueMatchCache[lid] ?? []
-                totalOpen += matches.filter {
-                    ["NS", "TBD"].contains($0.fixture.status.short) && !betIds.contains($0.fixture.id)
-                }.count
+                let lid        = LeagueMapper.getID(for: leagueName)
+                let allMatches = leagueMatchCache[lid] ?? []
+                let maxMd      = LeagueMapper.getMaxMatchday(for: leagueName)
+
+                // Nur offene Matches des aktuellen Spieltags zählen.
+                // Ersten NS/TBD-Match nehmen → dessen Runde = aktueller Spieltag.
+                let upcoming     = allMatches.filter { ["NS", "TBD"].contains($0.fixture.status.short) }
+                let currentRound = upcoming.first?.league.round
+                let forCount: [MatchData]
+                if let round = currentRound {
+                    let filtered = upcoming.filter { $0.league.round == round }
+                    // Fallback: wenn gefiltertes Ergebnis leer (z.B. Liga zwischen Runden),
+                    // alle verfügbaren NS/TBD-Matches zählen
+                    forCount = filtered.isEmpty ? upcoming : filtered
+                } else {
+                    forCount = upcoming
+                }
+                let matches = allMatches  // für Live-Prüfung + Bonus-Lock weiterhin alle verwenden
+                totalOpen += forCount.filter { !betIds.contains($0.fixture.id) }.count
                 if !isLive {
                     isLive = matches.contains { match in
                         if liveStatuses.contains(match.fixture.status.short) { return true }
@@ -218,14 +234,13 @@ class TippenViewModel: ObservableObject {
             return CommunityRank(rank: 1, total: max(community.members, 1), points: 0)
         }
 
-        let from = "\(APIConfig.currentSeason)-01-01"
-        let to = "\(APIConfig.currentSeason + 1)-06-30"
-
-        // Sequenziell: verhindert parallele API-Calls die Rate-Limits auslösen → leeres matchDict → 0 Pkt
+        // fetchAllSeasonFixtures: permanenter Disk-Cache, teilt Cache mit loadGesamtData.
+        // fetchMatchesByDateRange bricht bei Rate-Limiting nach Seite 1 ab → falsche Punkte.
         var matchDict: [Int: MatchData] = [:]
         for leagueName in community.activeLeagues {
             let lid = LeagueMapper.getID(for: leagueName)
-            let matches = await api.fetchMatchesByDateRange(for: lid, from: from, to: to)
+            guard lid != 9999 else { continue }
+            let matches = await api.fetchAllSeasonFixtures(for: lid)
             for m in matches { matchDict[m.fixture.id] = m }
         }
 
@@ -315,10 +330,14 @@ class TippenViewModel: ObservableObject {
 
 struct TippenView: View {
     @EnvironmentObject var manager: CommunityManager
+    @EnvironmentObject var lm: LanguageManager
     @StateObject private var vm = TippenViewModel()
+    @StateObject private var globalVM = GlobalCommunityViewModel()
     @State private var showProfileSheet = false
     @State private var showJoinSheet = false
+    @State private var showCommunityMenu = false
     @State private var selectedLeague: CommunityModel?
+    @State private var showGlobalCommunityDetail = false
     @State private var lastRefreshAt: Date = .distantPast
 
     private func refreshOpenTips() {
@@ -355,7 +374,10 @@ struct TippenView: View {
                     })
 
                     if manager.communities.isEmpty {
-                        EmptyStateView(onJoin: { showJoinSheet = true })
+                        EmptyStateView(
+                            onJoin: { showJoinSheet = true },
+                            onStart: { showCommunityMenu = true }
+                        )
                     } else {
                         CommunitySelectionView(
                             communities: manager.communities,
@@ -363,10 +385,11 @@ struct TippenView: View {
                             liveCommunitiesIds: vm.liveCommunitiesIds,
                             rankPerCommunity: vm.rankPerCommunity,
                             isLoadingRanks: vm.isLoadingRanks,
-                            onJoin: { showJoinSheet = true }
-                        ) { community in
-                            self.selectedLeague = community
-                        }
+                            onJoin: { showJoinSheet = true },
+                            onSelect: { self.selectedLeague = $0 },
+                            globalLeagueCount: globalVM.selectedLeagues.count,
+                            onGlobalCommunity: { showGlobalCommunityDetail = true }
+                        )
                     }
                 }
             }
@@ -377,11 +400,19 @@ struct TippenView: View {
                 ProfileView()
             }
             .sheet(isPresented: $showJoinSheet) {
-                JoinCommunitySheet().environmentObject(manager)
+                JoinCommunitySheet().environmentObject(manager).environmentObject(lm)
+            }
+            .sheet(isPresented: $showCommunityMenu) {
+                CommunityStartMenu().environmentObject(manager)
+            }
+            .sheet(isPresented: $showGlobalCommunityDetail) {
+                GlobalCommunityTippenDetailView(vm: globalVM)
+                    .environmentObject(manager)
             }
             .task {
                 await vm.loadOpenTips(communities: manager.communities)
                 Task { await vm.loadRanks(communities: manager.communities) }
+                await globalVM.load()
             }
             .onAppear { refreshOpenTips() }
             .onChange(of: manager.communities) { _, communities in
@@ -423,6 +454,7 @@ extension Notification.Name {
 // MARK: - Community-Auswahl
 
 struct CommunitySelectionView: View {
+    @EnvironmentObject var lm: LanguageManager
     let communities: [CommunityModel]
     let openTipsPerCommunity: [String: Int]
     let liveCommunitiesIds: Set<String>
@@ -430,6 +462,8 @@ struct CommunitySelectionView: View {
     let isLoadingRanks: Bool
     let onJoin: () -> Void
     let onSelect: (CommunityModel) -> Void
+    var globalLeagueCount: Int = 0
+    var onGlobalCommunity: () -> Void = {}
 
     @State private var settingsCommunity: CommunityModel?
     @EnvironmentObject var communityManager: CommunityManager
@@ -448,7 +482,7 @@ struct CommunitySelectionView: View {
                                     Text(community.name)
                                         .font(.headline)
                                         .foregroundColor(.white)
-                                    Text("\(community.members) Tipper")
+                                    Text("\(community.members) \(lm.t("community.tipper"))")
                                         .font(.caption)
                                         .foregroundColor(.gray)
                                 }
@@ -496,10 +530,39 @@ struct CommunitySelectionView: View {
             }
             .padding(.horizontal)
 
+            if globalLeagueCount > 0 {
+                Button(action: {
+                    HapticManager.instance.impact(style: .light)
+                    onGlobalCommunity()
+                }) {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle().fill(Color.oneKickNeon.opacity(0.15)).frame(width: 44, height: 44)
+                            Image(systemName: "globe.europe.africa.fill")
+                                .foregroundColor(.oneKickNeon).font(.system(size: 18))
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Globale Community")
+                                .font(.headline).foregroundColor(.white)
+                            Text("\(globalLeagueCount) Wettbewerb\(globalLeagueCount == 1 ? "" : "e")")
+                                .font(.caption).foregroundColor(.gray)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundColor(.gray)
+                    }
+                    .padding()
+                }
+                .frame(maxWidth: .infinity)
+                .background(Color.oneKickDarkGray)
+                .cornerRadius(16)
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.oneKickNeon.opacity(0.25), lineWidth: 1))
+                .padding(.horizontal)
+            }
+
                 // --- RANGLISTEN-ABSCHNITT ---
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Text("Meine Platzierungen")
+                        Text(lm.t("community.myRankings"))
                             .font(.headline).bold().foregroundColor(.white)
                         if isLoadingRanks {
                             ProgressView().tint(.oneKickNeon).scaleEffect(0.7)
@@ -530,10 +593,10 @@ struct CommunitySelectionView: View {
                                             .font(.subheadline).bold()
                                             .foregroundColor(.white)
                                         if let r = r {
-                                            Text("Platz \(r.rank) von \(r.total)")
+                                            Text("\(lm.t("general.rank")) \(r.rank) \(lm.t("general.of")) \(r.total)")
                                                 .font(.caption).foregroundColor(.gray)
                                         } else {
-                                            Text(isLoadingRanks ? "Wird geladen …" : "Nicht verfügbar")
+                                            Text(isLoadingRanks ? lm.t("general.loading") : lm.t("general.notAvailable"))
                                                 .font(.caption).foregroundColor(.gray)
                                         }
                                     }
@@ -541,7 +604,7 @@ struct CommunitySelectionView: View {
                                     Spacer()
 
                                     if let r = r {
-                                        Text("\(r.points) Pkt")
+                                        Text("\(r.points) \(lm.t("general.points"))")
                                             .font(.subheadline).bold()
                                             .foregroundColor(.oneKickNeon)
                                     }
@@ -569,7 +632,7 @@ struct CommunitySelectionView: View {
                 }) {
                     HStack {
                         Image(systemName: "person.badge.plus")
-                        Text("Mit Code beitreten")
+                        Text(lm.t("community.joinCode"))
                             .font(.subheadline).bold()
                     }
                     .foregroundColor(.oneKickNeon)
@@ -614,7 +677,10 @@ struct CommunitySelectionView: View {
 // MARK: - Empty State
 
 struct EmptyStateView: View {
+    @EnvironmentObject var lm: LanguageManager
     let onJoin: () -> Void
+    let onStart: () -> Void
+    @State private var showGlobalSelection = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -622,21 +688,33 @@ struct EmptyStateView: View {
             Image(systemName: "sportscourt")
                 .font(.system(size: 70))
                 .foregroundColor(.gray)
-            Text("Keine Liga")
+            Text(lm.t("community.noLeague"))
                 .font(.headline)
                 .foregroundColor(.white)
-            Text("Erstelle eine Tipprunde oder tritt einer bei.")
+            Text(lm.t("home.joinLeague"))
                 .font(.caption)
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
             Button(action: {
                 HapticManager.instance.impact(style: .medium)
+                onStart()
+            }) {
+                Text(lm.t("action.start"))
+                    .font(.subheadline).bold().foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.oneKickNeon)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 40)
+            Button(action: {
+                HapticManager.instance.impact(style: .medium)
                 onJoin()
             }) {
                 HStack {
                     Image(systemName: "person.badge.plus")
-                    Text("Mit Code beitreten")
+                    Text(lm.t("community.joinCode"))
                         .font(.subheadline).bold()
                 }
                 .foregroundColor(.oneKickNeon)
@@ -644,10 +722,26 @@ struct EmptyStateView: View {
                 .padding(.vertical, 12)
                 .background(Color.oneKickNeon.opacity(0.1))
                 .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.oneKickNeon.opacity(0.4), lineWidth: 1)
-                )
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.oneKickNeon.opacity(0.4), lineWidth: 1))
+            }
+            Button(action: {
+                HapticManager.instance.impact(style: .medium)
+                showGlobalSelection = true
+            }) {
+                HStack {
+                    Image(systemName: "globe.europe.africa.fill")
+                    Text("Globaler Community beitreten")
+                        .font(.subheadline).bold()
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(Color.oneKickDarkGray)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+            }
+            .sheet(isPresented: $showGlobalSelection) {
+                GlobalCommunityLeagueSelectionView()
             }
             Spacer()
         }
@@ -657,13 +751,21 @@ struct EmptyStateView: View {
 // MARK: - Beitreten per Code
 
 struct JoinCommunitySheet: View {
+    var prefillCode: String = ""
+
     @EnvironmentObject var manager: CommunityManager
+    @EnvironmentObject var lm: LanguageManager
     @Environment(\.dismiss) var dismiss
 
     @State private var code = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var success = false
+
+    init(prefillCode: String = "") {
+        self.prefillCode = prefillCode
+        _code = State(initialValue: prefillCode)
+    }
 
     var body: some View {
         NavigationStack {
@@ -677,7 +779,7 @@ struct JoinCommunitySheet: View {
                         .font(.system(size: 60))
                         .foregroundColor(.oneKickNeon)
 
-                    Text("Mit Code beitreten")
+                    Text(lm.t("community.joinCode"))
                         .font(.title2).bold()
                         .foregroundColor(.white)
 

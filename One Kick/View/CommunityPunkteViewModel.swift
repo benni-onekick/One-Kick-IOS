@@ -549,6 +549,69 @@ class CommunityPunkteViewModel: ObservableObject {
         NotificationCenter.default.post(name: .leaderboardUpdated, object: nil,
                                         userInfo: ["communityId": cid])
 
+        // Community-Rang für Badges prüfen
+        if let uid = Auth.auth().currentUser?.uid,
+           let rank = totalLeaderboard.firstIndex(where: { $0.id == uid }) {
+            await BadgeSystem.shared.checkAndUnlockCommunity(
+                rank: rank + 1, totalUsers: totalLeaderboard.count)
+        }
+
+        await updateGlobalWmScore()
+    }
+
+    // MARK: Globale Community Score (für alle gewählten Ligen)
+
+    private func updateGlobalWmScore() async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let entry = totalLeaderboard.first(where: { $0.id == uid }) else { return }
+
+        // Ligen des Users in der Globalen Community
+        let userDoc = try? await db.collection("users").document(uid).getDocument()
+        let globalLeagues = userDoc?.data()?["globalCommunityLeagues"] as? [String] ?? []
+
+        for leagueName in community.activeLeagues {
+            guard globalLeagues.contains(leagueName) else { continue }
+            await updateGlobalCommunityScore(for: leagueName, uid: uid, entry: entry)
+        }
+    }
+
+    private func updateGlobalCommunityScore(
+        for leagueName: String, uid: String, entry: UserPointsEntry
+    ) async {
+        let matchPoints = entry.leagueBreakdown
+            .first(where: { $0.leagueName == leagueName })?.points ?? 0
+
+        var bonusPoints = 0
+        if let correct = bonusCorrectAnswers[leagueName] {
+            let userAnswers = bonusEntries.first(where: { $0.id == uid })?.answers ?? [:]
+            let activeCatSet = community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
+            for cat in bonusCategoriesForLeague(leagueName, activeCategorySet: activeCatSet) {
+                let ua = userAnswers["\(leagueName)|\(cat)"] ?? ""
+                let ca = correct[cat] ?? ""
+                guard !ua.isEmpty, !ca.isEmpty else { continue }
+                bonusPoints += BonusScoringEngine.score(userAnswer: ua, correctAnswer: ca, category: cat)
+            }
+        }
+
+        let total = matchPoints + bonusPoints
+        guard total > 0 else { return }
+
+        let firestoreKey = leagueName
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
+            .lowercased()
+
+        let data: [String: Any] = [
+            "points":      total,
+            "displayName": entry.displayName,
+            "photoBase64": entry.photoBase64 as Any,
+            "updatedAt":   FieldValue.serverTimestamp()
+        ]
+        try? await db.collection("globalCommunityPoints")
+            .document(firestoreKey)
+            .collection("scores")
+            .document(uid)
+            .setData(data)
     }
 
     // MARK: Spielwoche-Navigation

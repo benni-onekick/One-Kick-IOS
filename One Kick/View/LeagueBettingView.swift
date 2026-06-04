@@ -225,12 +225,6 @@ class LeagueBettingViewModel: ObservableObject {
     }
 }
 
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
-    }
-}
-
 struct LeagueBettingView: View {
     let community: CommunityModel
     let leagueID: Int
@@ -238,14 +232,20 @@ struct LeagueBettingView: View {
     var maxMatchday: Int = 34
 
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var lm: LanguageManager
     @StateObject private var viewModel = LeagueBettingViewModel()
 
     @State private var showBettingPopup = false
     @State private var selectedMatchForPopup: MatchData?
 
     @State private var showStandingsSheet = false
+    @State private var showGroupStandingsSheet = false
     @State private var selectedMatchForLineup: MatchData?
     @State private var selectedMatchForLiveInfo: MatchData?
+
+    private let groupStageLeagueNames: Set<String> = [
+        "Weltmeisterschaft", "Europameisterschaft", "Nations League"
+    ]
 
     var body: some View {
         ZStack {
@@ -264,7 +264,19 @@ struct LeagueBettingView: View {
                                 HapticManager.instance.impact(style: .light)
                                 showStandingsSheet = true
                             }) {
-                                Text("Tabelle")
+                                Text(lm.t("tipping.table"))
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 14).padding(.vertical, 8)
+                                    .background(Color.oneKickNeon)
+                                    .cornerRadius(20)
+                            }
+                        } else if groupStageLeagueNames.contains(leagueName) {
+                            Button(action: {
+                                HapticManager.instance.impact(style: .light)
+                                showGroupStandingsSheet = true
+                            }) {
+                                Text(lm.t("tipping.groups"))
                                     .font(.system(size: 13, weight: .bold))
                                     .foregroundColor(.black)
                                     .padding(.horizontal, 14).padding(.vertical, 8)
@@ -300,7 +312,7 @@ struct LeagueBettingView: View {
                                     }
                                     .disabled(viewModel.currentRoundIndex <= 0 || viewModel.isLoading)
 
-                                    Text(viewModel.currentRoundName)
+                                    Text(localizedRoundName(viewModel.currentRoundName))
                                         .font(.headline).bold().foregroundColor(.white)
                                         .multilineTextAlignment(.center)
                                         .frame(width: 140)
@@ -326,7 +338,7 @@ struct LeagueBettingView: View {
                                         .background(Color.orange.opacity(0.15))
                                         .cornerRadius(6)
                                 } else {
-                                    Text("SPIELTAG").font(.system(size: 10, weight: .bold))
+                                    Text(lm.t("league.matchdayHeader")).font(.system(size: 10, weight: .bold))
                                         .foregroundColor(.oneKickNeon).tracking(1)
                                 }
                                 HStack(spacing: 20) {
@@ -357,7 +369,7 @@ struct LeagueBettingView: View {
                         }
 
                         VStack(spacing: 12) {
-                            Text(viewModel.isKOLeague ? viewModel.currentRoundName : (maxMatchday > 0 ? (viewModel.isInRelegation ? "Relegation · \(viewModel.currentRoundDisplayLabel)" : "Spieltag \(viewModel.currentMatchday)") : "Aktuelle Spiele"))
+                            Text(viewModel.isKOLeague ? localizedRoundName(viewModel.currentRoundName) : (maxMatchday > 0 ? (viewModel.isInRelegation ? "Relegation · \(viewModel.currentRoundDisplayLabel)" : "Spieltag \(viewModel.currentMatchday)") : "Aktuelle Spiele"))
                                 .font(.headline).bold().foregroundColor(.white)
                                 .frame(maxWidth: .infinity, alignment: .center)
                                 .padding(.horizontal)
@@ -385,6 +397,9 @@ struct LeagueBettingView: View {
         .navigationBarHidden(true)
         .sheet(isPresented: $showStandingsSheet) {
             StandingsSheet(leagueID: leagueID, leagueName: leagueName)
+        }
+        .sheet(isPresented: $showGroupStandingsSheet) {
+            GroupStandingsSheet(leagueID: leagueID, leagueName: leagueName)
         }
         .sheet(item: $selectedMatchForLineup) { match in
             LineupSheet(match: match)
@@ -469,7 +484,7 @@ struct LeagueBettingView: View {
                         HStack(spacing: 5) {
                             Image(systemName: "person.3.fill")
                                 .font(.system(size: 10))
-                            Text("Aufstellung")
+                            Text(lm.t("tipping.lineup"))
                                 .font(.system(size: 11, weight: .semibold))
                         }
                         .foregroundColor(.gray)

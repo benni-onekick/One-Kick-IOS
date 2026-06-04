@@ -11,6 +11,7 @@ class APIFootballService {
 
     // Standings-Cache (Instanz-Level, 6h)
     private var standingsCache: [Int: (entries: [StandingEntry], date: Date)] = [:]
+    private var groupStandingsCache: [Int: (groups: [[StandingEntry]], date: Date)] = [:]
     private let cacheExpiry: TimeInterval = 6 * 3600
 
     // Lineups-Cache (5min – werden 1h vor Anpfiff veröffentlicht)
@@ -42,9 +43,13 @@ class APIFootballService {
         return dir
     }()
 
-    // Upcoming-Cache (STATISCH, 2min) – StartseiteViewModel und TippenViewModel teilen Ergebnisse
+    // Upcoming-Cache (STATISCH, 5min) – StartseiteViewModel und TippenViewModel teilen Ergebnisse
     private static var upcomingCache: [Int: (matches: [MatchData], date: Date)] = [:]
-    private static let upcomingCacheTTL: TimeInterval = 2 * 60
+    private static let upcomingCacheTTL: TimeInterval = 5 * 60
+
+    // In-Flight-Deduplizierung: verhindert doppelte API-Calls wenn StartseiteView + TippenView
+    // gleichzeitig dieselbe Liga laden (beide würden sonst Cache-Miss sehen und Rate-Limit auslösen)
+    @MainActor private static var inFlightUpcoming: [Int: Task<[MatchData], Never>] = [:]
 
     // AllRounds-Cache (STATISCH, 24h) – Saisonrunden ändern sich nie → kein API-Call nötig
     private static var allRoundsCache: [Int: (rounds: [String], date: Date)] = [:]
@@ -323,7 +328,14 @@ class APIFootballService {
             guard let kickoff = iso.date(from: match.fixture.date) else { return false }
             return kickoff < threeHoursAgo
         }
-        if hasStaleNS { return nil }
+        // Eingefrorene Live-Scores: Match war Live als gecacht, Anpfiff >3h vergangen → Endstand fehlt
+        let liveStatuses: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
+        let hasStaleLive = entry.matches.contains { match in
+            guard liveStatuses.contains(match.fixture.status.short) else { return false }
+            guard let kickoff = iso.date(from: match.fixture.date) else { return false }
+            return kickoff < threeHoursAgo
+        }
+        if hasStaleNS || hasStaleLive { return nil }
         return entry.matches
     }
 
@@ -372,6 +384,8 @@ class APIFootballService {
     }
 
     // Gibt NS/TBD + aktuell Live-Spiele zurück (für Top-Spiele auf der Startseite).
+    // @MainActor: thread-sicherer Cache-Zugriff; Network-Call läuft im Kind-Task off-MainActor.
+    @MainActor
     func fetchCurrentAndUpcomingMatches(for leagueID: Int) async -> [MatchData] {
         let iso = ISO8601DateFormatter()
         if let c = Self.upcomingCache[leagueID], Date().timeIntervalSince(c.date) < Self.upcomingCacheTTL {
@@ -382,9 +396,64 @@ class APIFootballService {
             }
             if !hasStarted { return c.matches }
         }
+
+        // Laufenden Request für diese Liga abwarten statt doppelten API-Call zu machen
+        if let existing = Self.inFlightUpcoming[leagueID] {
+            return await existing.value
+        }
+
+        let capturedSelf = self
+        let task = Task<[MatchData], Never> {
+            await capturedSelf._networkFetchCurrentAndUpcoming(leagueID: leagueID)
+        }
+        Self.inFlightUpcoming[leagueID] = task
+        let result = await task.value
+        Self.upcomingCache[leagueID] = (result, Date())
+        Self.inFlightUpcoming.removeValue(forKey: leagueID)
+        return result
+    }
+
+    private func _networkFetchCurrentAndUpcoming(leagueID: Int) async -> [MatchData] {
+        // KO-Ligen (WM, EM, CL etc.): Direkt zur aktuellen Runde springen statt alle Runden zu scannen.
+        // Sequenzieller Scan von Runde 1 = bis zu 20+ uncachte Calls bei CL → Rate-Limit erschöpft.
+        if LeagueMapper.getMaxMatchday(for: leagueID) == 0 {
+            let valid: Set<String> = ["NS", "TBD", "1H", "2H", "HT", "ET", "P", "LIVE"]
+
+            if let currentRound = await fetchCurrentRound(for: leagueID) {
+                let matches = await fetchMatchesForRoundCached(leagueID, round: currentRound)
+                let active = matches.filter { valid.contains($0.fixture.status.short) }
+                if !active.isEmpty {
+                    // Nächste Runde für Vorschau dazuladen (gecacht)
+                    let allRounds = await fetchAllRounds(for: leagueID)
+                    if let idx = allRounds.firstIndex(of: currentRound), idx + 1 < allRounds.count {
+                        let next = await fetchMatchesForRoundCached(leagueID, round: allRounds[idx + 1])
+                        return active + next.filter { valid.contains($0.fixture.status.short) }
+                    }
+                    return active
+                }
+            }
+
+            // Fallback: sequenzieller Scan (nur wenn fetchCurrentRound fehlschlägt)
+            let allRounds = await fetchAllRounds(for: leagueID)
+            for (i, round) in allRounds.enumerated() {
+                let matches = await fetchMatchesForRoundCached(leagueID, round: round)
+                let active = matches.filter { valid.contains($0.fixture.status.short) }
+                if !active.isEmpty {
+                    var result = active
+                    if i + 1 < allRounds.count {
+                        let next = await fetchMatchesForRoundCached(leagueID, round: allRounds[i + 1])
+                        result += next.filter { valid.contains($0.fixture.status.short) }
+                    }
+                    return result
+                }
+            }
+            return []
+        }
+
+        let iso = ISO8601DateFormatter()
         let now = Date()
         let from = String(iso.string(from: now.addingTimeInterval(-86400)).prefix(10)) // -1 Tag fängt Live-Spiele
-        let to   = String(iso.string(from: now.addingTimeInterval(14 * 86400)).prefix(10))
+        let to   = String(iso.string(from: now.addingTimeInterval(21 * 86400)).prefix(10))
 
         var comp = URLComponents(string: "\(baseURL)/fixtures")!
         comp.queryItems = [
@@ -423,7 +492,6 @@ class APIFootballService {
                 return roundNum == 0 || roundNum <= maxMd
             }
         }
-        Self.upcomingCache[leagueID] = (result, Date())
         return result
     }
 
@@ -444,12 +512,42 @@ class APIFootballService {
               let data = try? await performRequest(url: url),
               let resp = try? JSONDecoder().decode(APIStandingsResponse.self, from: data),
               let wrapper = resp.response.first,
-              let group = wrapper.league.standings.first else {
+              !wrapper.league.standings.isEmpty else {
             return []
         }
 
-        standingsCache[leagueID] = (entries: group, date: Date())
-        return group
+        // Alle Gruppen flachen, Duplikate entfernen (WM/EM liefert Gruppen- + Gesamttabelle)
+        var seen = Set<Int>()
+        let allEntries = wrapper.league.standings
+            .flatMap { $0 }
+            .filter { seen.insert($0.team.id).inserted }
+            .sorted { $0.team.name < $1.team.name }
+        standingsCache[leagueID] = (entries: allEntries, date: Date())
+        return allEntries
+    }
+
+    func fetchGroupStandings(for leagueID: Int) async -> [[StandingEntry]] {
+        if let cached = groupStandingsCache[leagueID],
+           Date().timeIntervalSince(cached.date) < cacheExpiry {
+            return cached.groups
+        }
+
+        var comp = URLComponents(string: "\(baseURL)/standings")!
+        comp.queryItems = [
+            URLQueryItem(name: "league", value: "\(leagueID)"),
+            URLQueryItem(name: "season", value: "\(season(for: leagueID))")
+        ]
+        guard let url = comp.url,
+              let data = try? await performRequest(url: url),
+              let resp = try? JSONDecoder().decode(APIStandingsResponse.self, from: data),
+              let wrapper = resp.response.first,
+              !wrapper.league.standings.isEmpty else {
+            return []
+        }
+
+        let groups = wrapper.league.standings.filter { !$0.isEmpty }
+        groupStandingsCache[leagueID] = (groups: groups, date: Date())
+        return groups
     }
 
     // MARK: - Wettquoten
@@ -762,13 +860,14 @@ class APIFootballService {
             bucket.forEach { add($0) }
         }
 
-        // PHASE 3 – Fallback: Standard-Top-Ligen (CL, BL, PL, La Liga, Serie A)
+        // PHASE 3 – Fallback: Standard-Top-Ligen (CL, BL, PL, La Liga, Serie A, MLS, Saudi)
+        // fetchCurrentAndUpcomingMatches statt fetchUpcomingMatches → nutzt 5-min-Cache + In-Flight-Dedup
         if result.isEmpty {
-            let defaultLeagues = [2, 78, 39, 140, 135]
+            let defaultLeagues = [1, 2, 78, 39, 140, 135, 253, 307]
             for id in defaultLeagues where result.count < 5 {
                 let matches: [MatchData]
                 if let preloaded = upcoming[id] { matches = preloaded }
-                else { matches = await fetchUpcomingMatches(for: id) }
+                else { matches = await fetchCurrentAndUpcomingMatches(for: id) }
                 if let first = matches.first(where: { !usedIds.contains($0.fixture.id) }) { add(first) }
             }
         }

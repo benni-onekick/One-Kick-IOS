@@ -81,6 +81,7 @@ struct StandingEntry: Codable {
     let goalsDiff: Int
     let form: String?
     let all: StandingStats
+    let group: String?
 }
 
 struct StandingTeam: Codable {

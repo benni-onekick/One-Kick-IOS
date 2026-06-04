@@ -88,10 +88,6 @@ struct LiveMatchView: View {
     private var matchHeader: some View {
         HStack {
             VStack(spacing: 6) {
-                AsyncImage(url: URL(string: match.teams.home.logo)) { img in
-                    img.resizable().scaledToFit()
-                } placeholder: { Color.clear }
-                .frame(width: 40, height: 40)
                 Text(match.teams.home.name)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
@@ -119,10 +115,6 @@ struct LiveMatchView: View {
             }
 
             VStack(spacing: 6) {
-                AsyncImage(url: URL(string: match.teams.away.logo)) { img in
-                    img.resizable().scaledToFit()
-                } placeholder: { Color.clear }
-                .frame(width: 40, height: 40)
                 Text(match.teams.away.name)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
@@ -193,10 +185,6 @@ struct LiveMatchView: View {
                     VStack(spacing: 0) {
                         HStack {
                             HStack(spacing: 6) {
-                                AsyncImage(url: URL(string: match.teams.home.logo)) { img in
-                                    img.resizable().scaledToFit()
-                                } placeholder: { Color.clear }
-                                .frame(width: 22, height: 22)
                                 Text(match.teams.home.name)
                                     .font(.system(size: 12, weight: .bold)).foregroundColor(.white)
                                     .lineLimit(1)
@@ -207,10 +195,6 @@ struct LiveMatchView: View {
                                 Text(match.teams.away.name)
                                     .font(.system(size: 12, weight: .bold)).foregroundColor(.white)
                                     .lineLimit(1)
-                                AsyncImage(url: URL(string: match.teams.away.logo)) { img in
-                                    img.resizable().scaledToFit()
-                                } placeholder: { Color.clear }
-                                .frame(width: 22, height: 22)
                             }
                             .frame(maxWidth: .infinity, alignment: .trailing)
                         }

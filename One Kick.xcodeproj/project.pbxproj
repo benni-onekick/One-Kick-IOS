@@ -12,6 +12,9 @@
 		B307BD502FBB0D6500E776C0 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B307BD4F2FBB0D6400E776C0 /* UserNotifications.framework */; };
 		B307BD522FBB0D6500E776C0 /* UserNotificationsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B307BD512FBB0D6500E776C0 /* UserNotificationsUI.framework */; };
 		B307BD5C2FBB0D6500E776C0 /* TipNotificationExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B307BD4D2FBB0D6400E776C0 /* TipNotificationExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B3A10A0B2FCECCAC006E655D /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = B3A10A0A2FCECCAC006E655D /* FirebaseMessaging */; };
+		B3D60F962FD08C60008D2757 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = B3D60F952FD08C60008D2757 /* GoogleSignIn */; };
+		B3D60F982FD08C60008D2757 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = B3D60F972FD08C60008D2757 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +89,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B3D60F982FD08C60008D2757 /* GoogleSignInSwift in Frameworks */,
+				B3A10A0B2FCECCAC006E655D /* FirebaseMessaging in Frameworks */,
+				B3D60F962FD08C60008D2757 /* GoogleSignIn in Frameworks */,
 				B30569372F76F50E0018A25F /* FirebaseAuth in Frameworks */,
 				B30569392F76F50E0018A25F /* FirebaseFirestore in Frameworks */,
 			);
@@ -169,6 +175,9 @@
 			packageProductDependencies = (
 				B30569362F76F50E0018A25F /* FirebaseAuth */,
 				B30569382F76F50E0018A25F /* FirebaseFirestore */,
+				B3A10A0A2FCECCAC006E655D /* FirebaseMessaging */,
+				B3D60F952FD08C60008D2757 /* GoogleSignIn */,
+				B3D60F972FD08C60008D2757 /* GoogleSignInSwift */,
 			);
 			productName = "One Kick";
 			productReference = B3FBDA382EF02BCC00198DD6 /* One Kick.app */;
@@ -193,16 +202,20 @@
 				};
 			};
 			buildConfigurationList = B3FBDA332EF02BCC00198DD6 /* Build configuration list for PBXProject "One Kick" */;
-			developmentRegion = en;
+			developmentRegion = de;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				de,
 				en,
+				nl,
+				fr,
 				Base,
 			);
 			mainGroup = B3FBDA2F2EF02BCC00198DD6;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B30569352F76F50E0018A25F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				B3D60F942FD08C60008D2757 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B3FBDA392EF02BCC00198DD6 /* Products */;
@@ -442,10 +455,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "One Kick/One Kick.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = FCGG86Y2QQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "One-Kick-Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "One Kick benötigt Zugriff auf die Kamera, damit du ein Logo für deine Community aufnehmen kannst.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "One Kick benötigt Zugriff auf deine Fotobibliothek, um ein Logo für deine Community auszuwählen.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -457,7 +471,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Benni.One-Kick";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -476,10 +490,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "One Kick/One Kick.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = FCGG86Y2QQ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "One-Kick-Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "One Kick benötigt Zugriff auf die Kamera, damit du ein Logo für deine Community aufnehmen kannst.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "One Kick benötigt Zugriff auf deine Fotobibliothek, um ein Logo für deine Community auszuwählen.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -491,7 +506,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Benni.One-Kick";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -544,6 +559,14 @@
 				minimumVersion = 12.11.0;
 			};
 		};
+		B3D60F942FD08C60008D2757 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -556,6 +579,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B30569352F76F50E0018A25F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		B3A10A0A2FCECCAC006E655D /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30569352F76F50E0018A25F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		B3D60F952FD08C60008D2757 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B3D60F942FD08C60008D2757 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		B3D60F972FD08C60008D2757 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B3D60F942FD08C60008D2757 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

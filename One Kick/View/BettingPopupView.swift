@@ -75,10 +75,11 @@ struct BettingPopupView: View {
 
                     // TEAMS & EINGABE
                     HStack(spacing: 15) {
-                        teamColumn(name: match.teams.home.name, logo: match.teams.home.logo, tip: $homeTip)
+                        let isNational = nationalTeamLeagueIDs.contains(match.league.id)
+                        teamColumn(name: isNational ? teamNameWithFlag(match.teams.home.name) : match.teams.home.name, tip: $homeTip)
                         Text(":")
                             .font(.title).bold().foregroundColor(.gray).padding(.top, 35)
-                        teamColumn(name: match.teams.away.name, logo: match.teams.away.logo, tip: $awayTip)
+                        teamColumn(name: isNational ? teamNameWithFlag(match.teams.away.name) : match.teams.away.name, tip: $awayTip)
                     }
                     .padding(.vertical, 6)
 
@@ -229,20 +230,18 @@ struct BettingPopupView: View {
                 }
             }
         }
+        Text("Nur zur Information · kein Echtgeld")
+            .font(.system(size: 9)).foregroundColor(.gray.opacity(0.5))
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 2)
         .padding(12)
         .background(Color.black.opacity(0.25))
         .cornerRadius(12)
     }
 
     @ViewBuilder
-    private func teamColumn(name: String, logo: String, tip: Binding<String>) -> some View {
+    private func teamColumn(name: String, tip: Binding<String>) -> some View {
         VStack(spacing: 8) {
-            AsyncImage(url: URL(string: logo)) { phase in
-                if let image = phase.image { image.resizable().scaledToFit() }
-                else { Circle().fill(Color.gray.opacity(0.3)) }
-            }
-            .frame(width: 42, height: 42)
-
             Text(name)
                 .font(.system(size: 10, weight: .bold)).foregroundColor(.white).lineLimit(1)
 

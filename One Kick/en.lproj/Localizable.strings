@@ -1,0 +1,216 @@
+/* Tabs */
+"tab.start" = "Start";
+"tab.tippen" = "Tipping";
+"tab.news" = "News";
+"tab.statistik" = "Statistics";
+"tab.community" = "Community";
+
+/* Actions */
+"action.save" = "Save";
+"action.cancel" = "Cancel";
+"action.done" = "Done";
+"action.close" = "Close";
+"action.confirm" = "Confirm";
+"action.back" = "Back";
+"action.join" = "Join";
+"action.add" = "Add";
+"action.edit" = "Edit";
+"action.delete" = "Delete";
+"action.leave" = "Leave";
+"action.send" = "Send";
+"action.refresh" = "Refresh";
+"action.start" = "Get Started";
+"action.report" = "Report";
+"action.block" = "Block";
+
+/* Profile */
+"profile.title" = "Profile & Settings";
+"profile.section.profile" = "My Profile";
+"profile.section.tipping" = "Tipping";
+"profile.section.security" = "Security";
+"profile.section.legal" = "Legal";
+"profile.section.badges" = "My Badges";
+"profile.language" = "Language";
+"profile.changeName" = "Change Display Name";
+"profile.favorites" = "Favorite Leagues & Teams";
+"profile.resetPassword" = "Reset Password";
+"profile.logout" = "Log Out";
+"profile.deleteAccount" = "Delete Account";
+"profile.crossCommunity" = "Cross-Community Tipping";
+"profile.showOdds" = "Show Odds";
+"profile.notifications" = "Tipping Reminders";
+"profile.impressum" = "Imprint";
+"profile.privacy" = "Privacy Policy";
+
+/* Home */
+"home.welcome" = "Welcome to One Kick";
+"home.welcomeBack" = "Welcome back";
+"home.openTips" = "My Open Tips";
+"home.topMatches" = "Top Matches";
+"home.allTipped" = "You've tipped all matches.";
+"home.noTopMatches" = "No top matches available.";
+"home.tipNow" = "Tip Now";
+
+/* Community */
+"community.overview" = "Your Overview";
+"community.my" = "My Communities";
+"community.showAll" = "Show All";
+"community.global" = "Global Community";
+"community.joinCode" = "Join with Code";
+"community.myRankings" = "My Rankings";
+"community.loading" = "Loading \u{2026}";
+"community.create" = "Create League";
+"community.noLeague" = "No League";
+"community.inviteCode" = "Your Invite Code";
+
+/* Tipping */
+"tipping.matchday" = "Matchday";
+"tipping.table" = "Table";
+"tipping.lineup" = "Lineup";
+"tipping.groups" = "Groups";
+"tipping.place" = "Place Tip";
+"tipping.edit" = "Edit Tip";
+"tipping.liveInfo" = "Live Info";
+"tipping.rounds" = "Rounds";
+"tipping.infoOnly" = "For information only \u{00B7} no real money";
+
+/* Login */
+"login.signIn" = "Sign In";
+"login.register" = "Register";
+"login.email" = "Email Address";
+"login.password" = "Password";
+"login.displayName" = "Display Name";
+"login.createAccount" = "Create Account";
+"login.loginButton" = "Log In";
+"login.forgotPassword" = "Forgot Password?";
+"login.appleSignIn" = "Sign in with Apple";
+"login.googleSignIn" = "Sign in with Google";
+"login.or" = "or";
+
+/* General */
+"general.loading" = "Loading \u{2026}";
+"general.noData" = "No Data";
+"general.error" = "Error";
+"general.yes" = "Yes";
+"general.no" = "No";
+"general.ok" = "OK";
+"general.points" = "Pts";
+"general.pts" = "Pts";
+"general.rank" = "Rank";
+"general.of" = "of";
+"general.notAvailable" = "Not available";
+"general.loadingLeagues" = "Loading leagues \u{2026}";
+
+/* Community (additions) */
+"community.of" = "of";
+"community.tipper" = "Tippers";
+"community.entered" = "Joined!";
+"community.joined" = "Joined!";
+"community.enterCode" = "Enter the invite code of the tipping round.";
+"community.noLeagueDesc" = "Create a tipping round or join one.";
+
+/* Profile (additions) */
+"profile.badges.noneSelected" = "No badges selected yet";
+"profile.badges.edit" = "Edit Badges";
+"profile.badges.unlock" = "Unlock Badges";
+"profile.tapPhoto" = "Tap photo to change";
+"profile.passwordReset.title" = "Reset Password";
+"profile.passwordReset.msg" = "We will send you a link to reset your password.";
+"profile.deleteAccount.title" = "Delete account?";
+"profile.deleteAccount.msg" = "All your tips and data will be permanently deleted.";
+"profile.passwordReset.sent" = "\u{2713} Email sent";
+
+/* Points view */
+"punkteview.overall" = "Overall";
+"punkteview.leagues" = "Leagues";
+"punkteview.noTips" = "No Tips Yet";
+"punkteview.currentLeader" = "Current Leader";
+"punkteview.weeklyWinner" = "Week Winner";
+"punkteview.loadingPoints" = "Loading season points \u{2026}";
+"punkteview.noLeaderboard" = "The leaderboard appears once tips have been placed.";
+"punkteview.loadingWeek" = "Loading matchweek \u{2026}";
+"punkteview.noMatches" = "No matches this week";
+"punkteview.noMatchesDesc" = "No matches are scheduled this week for these leagues.";
+"punkteview.points" = "Points";
+
+/* Home (additions) */
+"home.joinLeague" = "Join a league or create your own.";
+"home.tippers" = "Tippers";
+
+/* Statistics */
+"stats.totalPoints" = "Total Points";
+"stats.perGame" = "Avg per game";
+"stats.evaluated" = "Evaluated";
+"stats.precision" = "TIP PRECISION";
+"stats.correctTrend" = "Correct Trend";
+"stats.draw" = "Draw";
+"stats.exactScore" = "Exact Score";
+"stats.goalRatio" = "Goal Ratio";
+"stats.homeGoals" = "Home Goals";
+"stats.awayGoals" = "Away Goals";
+"stats.currentStreak" = "Current Streak";
+"stats.bestStreak" = "Best Streak";
+"stats.top5Leagues" = "TOP 5 LEAGUES";
+"stats.maxPts" = "max. 7 pts";
+"stats.tipsEvaluated" = "evaluated tips";
+"stats.consecutivePts" = "consecutive with pts";
+"stats.longestStreak" = "longest streak overall";
+
+/* News */
+"news.onlyFavorites" = "Favorites only";
+"news.allLeagues" = "All active leagues";
+"news.transfers" = "Transfers";
+
+/* Badge Picker */
+"badge.pickTitle" = "Select Badges";
+"badge.pickHint" = "Choose up to 3 badges for your profile.";
+"badge.unlocked" = "Unlocked";
+"badge.toEarn" = "Still to earn";
+"badge.noneYet" = "No badges unlocked yet";
+
+/* League */
+"league.matchdayHeader" = "MATCHDAY";
+
+/* Imprint */
+"legal.impressum.title" = "Imprint";
+"legal.impressum.section1" = "Legal Notice acc. \u{00a7} 5 TMG";
+"legal.impressum.section2" = "Contact";
+"legal.impressum.section3" = "Note";
+"legal.impressum.note" = "This app is operated as a private, non-commercial project. No registered business exists.";
+"legal.impressum.section4" = "Liability Notice";
+"legal.impressum.liability" = "The contents of this app were created with the greatest possible care. As this is a private test version, no guarantee is given for the accuracy, completeness or timeliness of the information displayed.";
+
+/* Privacy Policy */
+"legal.privacy.title" = "Privacy Policy";
+"legal.privacy.s1.title" = "Overview";
+"legal.privacy.s1.text" = "This app is a private, non-commercial project in the testing phase. This privacy policy explains which data is processed and where.";
+"legal.privacy.s2.title" = "Data Controller (Art. 4 No. 7 GDPR)";
+"legal.privacy.s3.title" = "Firebase Authentication";
+"legal.privacy.s3.text" = "Firebase Authentication by Google LLC is used for sign-in. Your email address is stored on Google (Firebase) servers. Google LLC is based in the USA; data transfers are based on EU Standard Contractual Clauses.";
+"legal.privacy.s3.link" = "Firebase Privacy Policy: firebase.google.com/support/privacy";
+"legal.privacy.s4.title" = "Firebase Firestore (Database)";
+"legal.privacy.s4.intro" = "The following data is stored in Firebase Firestore (Google LLC) to provide app features:";
+"legal.privacy.s4.b1" = "\u{2022} Tips, usernames, community memberships, match results, and bonus tips";
+"legal.privacy.s4.b2" = "\u{2022} Chat messages within communities (text, sender ID, timestamp)";
+"legal.privacy.s4.b3" = "\u{2022} Global Community: selected leagues, points and ranking per league";
+"legal.privacy.s4.b4" = "\u{2022} Badges / Achievements: unlocked and displayed achievements";
+"legal.privacy.s4.b5" = "\u{2022} Join date: timestamp of account creation";
+"legal.privacy.s4.legal" = "Legal basis: Art. 6 para. 1 lit. b GDPR (contract performance / pre-contractual measures).";
+"legal.privacy.s5.title" = "Sign in with Apple and Google";
+"legal.privacy.s5.text1" = "The app offers sign-in with Apple ID or Google account. Authentication data (name, email) is transmitted to Firebase Authentication. No passwords are stored in the app.";
+"legal.privacy.s5.text2" = "When signing in with Apple, only the data you share is processed. Apple transmits this once at first sign-in.";
+"legal.privacy.s5.link1" = "Apple Privacy: apple.com/legal/privacy";
+"legal.privacy.s5.link2" = "Google Privacy: policies.google.com/privacy";
+"legal.privacy.s6.title" = "API-Football (Match Data)";
+"legal.privacy.s6.text" = "Requests are made to the API-Football interface for schedules, results and statistics. No personal data is transmitted.";
+"legal.privacy.s7.title" = "Local Storage (on your device)";
+"legal.privacy.s7.text" = "Settings such as favorite leagues and display options are stored exclusively locally via UserDefaults on your device and are not transmitted to external servers.";
+"legal.privacy.s8.title" = "Apple App Store / Crash Reports";
+"legal.privacy.s8.text" = "The app is distributed via the Apple App Store. Apple may collect anonymized crash and usage data. Processing is anonymous; individual users cannot be identified.";
+"legal.privacy.s9.title" = "Your Rights (GDPR)";
+"legal.privacy.s9.text1" = "You have the right to access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18) and data portability (Art. 20).";
+"legal.privacy.s9.text2" = "To exercise your rights, contact us by email: benni.diedrich@gmail.com";
+"legal.privacy.s10.title" = "No Ads, No Tracking";
+"legal.privacy.s10.text" = "This app contains no advertising, no third-party tracking, and no analytics tools (e.g. Google Analytics).";
+"legal.privacy.stand" = "Last Updated";
+"legal.privacy.date" = "June 2026";

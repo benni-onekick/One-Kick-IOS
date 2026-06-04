@@ -241,13 +241,6 @@ struct StandingRowView: View {
                 .foregroundColor(.gray)
                 .frame(width: 28, alignment: .center)
 
-            AsyncImage(url: URL(string: displayEntry.entry.team.logo)) { img in
-                img.resizable().scaledToFit()
-            } placeholder: {
-                Circle().fill(Color.gray.opacity(0.2))
-            }
-            .frame(width: 20, height: 20)
-
             Text(displayEntry.entry.team.name)
                 .font(.system(size: 13))
                 .foregroundColor(.white)
@@ -288,5 +281,123 @@ struct StandingRowView: View {
 
     private var goalDiffText: String {
         displayEntry.goalsDiff > 0 ? "+\(displayEntry.goalsDiff)" : "\(displayEntry.goalsDiff)"
+    }
+}
+
+// MARK: - Gruppen-Tabelle (WM, EM)
+
+struct GroupStandingsSheet: View {
+    let leagueID: Int
+    let leagueName: String
+
+    @Environment(\.dismiss) var dismiss
+    @State private var groups: [[StandingEntry]] = []
+    @State private var selectedGroupIndex: Int = 0
+    @State private var isLoading = true
+
+    private let service = APIFootballService()
+
+    private var currentGroup: [StandingEntry] {
+        guard selectedGroupIndex < groups.count else { return [] }
+        return groups[selectedGroupIndex]
+    }
+
+    private func groupName(at index: Int) -> String {
+        if let raw = groups[index].first?.group {
+            // "Group A" → "Gr. A", "Gruppe A" → "Gr. A"
+            let parts = raw.split(separator: " ")
+            return parts.count >= 2 ? "Gr. \(parts.last!)" : raw
+        }
+        return "Gr. \(index + 1)"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.oneKickBlack.ignoresSafeArea()
+
+                if isLoading {
+                    ProgressView().tint(.oneKickNeon)
+                } else if groups.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "tablecells")
+                            .font(.system(size: 40)).foregroundColor(.gray)
+                        Text("Keine Gruppendaten verfügbar")
+                            .font(.headline).foregroundColor(.white)
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(groups.indices, id: \.self) { i in
+                                    Button(action: { selectedGroupIndex = i }) {
+                                        Text(groupName(at: i))
+                                            .font(.system(size: 13, weight: .bold))
+                                            .foregroundColor(selectedGroupIndex == i ? .black : .white)
+                                            .padding(.horizontal, 14).padding(.vertical, 7)
+                                            .background(selectedGroupIndex == i
+                                                        ? Color.oneKickNeon
+                                                        : Color.oneKickDarkGray)
+                                            .cornerRadius(16)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                        }
+
+                        Rectangle()
+                            .fill(Color.white.opacity(0.1))
+                            .frame(height: 0.5)
+
+                        // Spaltenüberschriften
+                        HStack {
+                            Text("#").frame(width: 28, alignment: .center)
+                            Text("Verein").frame(maxWidth: .infinity, alignment: .leading)
+                            Text("Sp").frame(width: 28, alignment: .center)
+                            Text("S").frame(width: 24, alignment: .center)
+                            Text("U").frame(width: 24, alignment: .center)
+                            Text("N").frame(width: 24, alignment: .center)
+                            Text("TD").frame(width: 34, alignment: .center)
+                            Text("Pkt").frame(width: 36, alignment: .center)
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+
+                        Rectangle()
+                            .fill(Color.white.opacity(0.1))
+                            .frame(height: 0.5)
+
+                        ScrollView {
+                            ForEach(Array(currentGroup.enumerated()), id: \.element.team.id) { i, entry in
+                                let display = StandingDisplayEntry(id: entry.team.id, rank: entry.rank, entry: entry)
+                                StandingRowView(displayEntry: display, leagueID: leagueID)
+
+                                if i < currentGroup.count - 1 {
+                                    Rectangle()
+                                        .fill(Color.white.opacity(0.06))
+                                        .frame(height: 0.5)
+                                        .padding(.horizontal, 8)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("\(leagueName) – Gruppen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Schließen") { dismiss() }
+                        .foregroundColor(.oneKickNeon)
+                }
+            }
+        }
+        .task {
+            groups = await service.fetchGroupStandings(for: leagueID)
+            isLoading = false
+        }
     }
 }

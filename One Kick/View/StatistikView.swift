@@ -60,7 +60,7 @@ class StatistikViewModel: ObservableObject {
 
     private let api = APIFootballService()
     private let db  = Firestore.firestore()
-    private let cacheTTL: TimeInterval = 30 * 60
+    private let cacheTTL: TimeInterval = 12 * 3600  // 12h — abgeschlossene Spielergebnisse ändern sich nicht
 
     private var cacheKey: String {
         let uid = Auth.auth().currentUser?.uid ?? "anon"
@@ -77,8 +77,26 @@ class StatistikViewModel: ObservableObject {
         }
         isLoading = true
         let fresh = await compute(communities: communities)
-        stats = fresh
-        if fresh.evaluatedTips > 0 { saveToCache(fresh) }
+        if fresh.evaluatedTips > 0 {
+            // Normale Berechnung erfolgreich
+            stats = fresh
+            saveToCache(fresh)
+        } else if fresh.totalTips > 0 {
+            // Bets vorhanden aber Matches noch nicht über API verfügbar → teilweise cachen
+            saveToCache(fresh)
+            // Alten Cache behalten falls vorhanden (stabiler als leere Anzeige)
+            if let cached = loadFromCache(), cached.evaluatedTips > 0 {
+                stats = cached
+            } else {
+                stats = fresh
+            }
+        } else if let cached = loadFromCache() {
+            // Keine Bets geladen (Netzwerkfehler) → alten Stand zeigen
+            stats = cached
+        } else {
+            stats = fresh
+        }
+        await BadgeSystem.shared.checkAndUnlock(from: fresh)
         isLoading = false
     }
 
@@ -87,21 +105,22 @@ class StatistikViewModel: ObservableObject {
         let fresh = await compute(communities: communities)
         stats = fresh
         saveToCache(fresh)
+        await BadgeSystem.shared.checkAndUnlock(from: fresh)
         isRefreshing = false
     }
 
     private func compute(communities: [CommunityModel]) async -> StatsData {
         guard let userId = Auth.auth().currentUser?.uid else { return StatsData() }
 
-        // 1. Alle Tipps aus allen Communities laden (dedup per fixtureId)
-        var allBets: [Int: (home: Int, away: Int)] = [:]
+        // 1. Alle Tipps aus allen Communities laden (kein Dedup — gleiche Partie aus 2 Communities zählt 2x)
+        var allBets: [(fixtureId: Int, tip: (home: Int, away: Int))] = []
         await withTaskGroup(of: [Int: (home: Int, away: Int)].self) { group in
             for community in communities {
                 guard let cid = community.id else { continue }
                 group.addTask { await self.fetchBets(communityId: cid, userId: userId) }
             }
             for await bets in group {
-                for (k, v) in bets where allBets[k] == nil { allBets[k] = v }
+                for (k, v) in bets { allBets.append((fixtureId: k, tip: v)) }
             }
         }
 
@@ -334,11 +353,11 @@ struct StatistikView: View {
 
     private func summaryCard(_ s: StatsData) -> some View {
         HStack(spacing: 0) {
-            summaryCol(value: "\(s.totalPoints)", label: "Gesamtpunkte", color: .oneKickNeon)
+            summaryCol(value: "\(s.totalPoints)", label: LanguageManager.shared.t("stats.totalPoints"), color: .oneKickNeon)
             Divider().background(Color.white.opacity(0.08)).frame(height: 50)
-            summaryCol(value: String(format: "%.1f", s.avgPointsPerTip), label: "Ø pro Spiel", sublabel: "max. 7 Pkt", color: .white)
+            summaryCol(value: String(format: "%.1f", s.avgPointsPerTip), label: LanguageManager.shared.t("stats.perGame"), sublabel: LanguageManager.shared.t("stats.maxPts"), color: .white)
             Divider().background(Color.white.opacity(0.08)).frame(height: 50)
-            summaryCol(value: "\(s.evaluatedTips)", label: "Bewertet", sublabel: "gewertete Tipps", color: .gray)
+            summaryCol(value: "\(s.evaluatedTips)", label: LanguageManager.shared.t("stats.evaluated"), sublabel: LanguageManager.shared.t("stats.tipsEvaluated"), color: .gray)
         }
         .padding(.vertical, 18)
         .background(Color.oneKickDarkGray)
@@ -367,41 +386,41 @@ struct StatistikView: View {
 
     private func praezisionSection(_ s: StatsData) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("Tipppräzision")
+            sectionHeader(LanguageManager.shared.t("stats.precision"))
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 praezisionCard(
-                    title: "Richtige Tendenz",
+                    title: LanguageManager.shared.t("stats.correctTrend"),
                     count: s.correctWinner,
                     total: s.evaluatedTips,
                     color: .oneKickNeon
                 )
                 praezisionCard(
-                    title: "Unentschieden",
+                    title: LanguageManager.shared.t("stats.draw"),
                     count: s.correctDraw,
                     total: s.evaluatedTips,
                     color: Color(red: 0.6, green: 0.6, blue: 1.0)
                 )
                 praezisionCard(
-                    title: "Volltreffer",
+                    title: LanguageManager.shared.t("stats.exactScore"),
                     count: s.exactScore,
                     total: s.evaluatedTips,
                     color: Color(red: 1.0, green: 0.7, blue: 0.2)
                 )
                 praezisionCard(
-                    title: "Torverhältnis",
+                    title: LanguageManager.shared.t("stats.goalRatio"),
                     count: s.correctGoalDiff,
                     total: s.evaluatedTips,
                     color: Color(red: 0.35, green: 0.85, blue: 0.55)
                 )
                 praezisionCard(
-                    title: "Heimtore korrekt",
+                    title: LanguageManager.shared.t("stats.homeGoals"),
                     count: s.correctHomeGoals,
                     total: s.evaluatedTips,
                     color: Color(red: 0.4, green: 0.8, blue: 1.0)
                 )
                 praezisionCard(
-                    title: "Auswärtstore",
+                    title: LanguageManager.shared.t("stats.awayGoals"),
                     count: s.correctAwayGoals,
                     total: s.evaluatedTips,
                     color: Color(red: 1.0, green: 0.45, blue: 0.45)
@@ -454,16 +473,16 @@ struct StatistikView: View {
         HStack(spacing: 0) {
             streakCol(
                 value: "\(s.currentStreak)",
-                label: "Aktuelle Serie",
-                sublabel: "aufeinanderfolgend mit Pkt",
+                label: LanguageManager.shared.t("stats.currentStreak"),
+                sublabel: LanguageManager.shared.t("stats.consecutivePts"),
                 icon: "flame.fill",
                 color: s.currentStreak > 0 ? .orange : .gray
             )
             Divider().background(Color.white.opacity(0.08)).frame(height: 50)
             streakCol(
                 value: "\(s.bestStreak)",
-                label: "Beste Serie",
-                sublabel: "längste Streak gesamt",
+                label: LanguageManager.shared.t("stats.bestStreak"),
+                sublabel: LanguageManager.shared.t("stats.longestStreak"),
                 icon: "star.fill",
                 color: .oneKickNeon
             )
@@ -498,7 +517,7 @@ struct StatistikView: View {
 
     private func ligaSection(_ s: StatsData) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("Top 5 Ligen")
+            sectionHeader(LanguageManager.shared.t("stats.top5Leagues"))
 
             VStack(spacing: 0) {
                 let top5 = Array(s.leagueBreakdown.prefix(5))

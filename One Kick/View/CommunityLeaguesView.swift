@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Combine
+import FirebaseAuth
 
 // MARK: - LeagueMapper
 
@@ -133,10 +134,12 @@ struct LeagueMapper {
         }
     }
 
-    // MLS läuft nach Kalenderjahr → season=2026, alle anderen nach Saison-Startjahr
+    // MLS + Saudi laufen nach Kalenderjahr → season=2026, alle anderen nach Saison-Startjahr
     static func getSeason(for leagueID: Int) -> Int {
         switch leagueID {
         case 253: return 2026  // MLS
+        case 307: return 2026  // Saudi Pro League (2026/27-Saison startet August 2026)
+        case 1:   return 2026  // Weltmeisterschaft 2026
         default:  return APIConfig.currentSeason
         }
     }
@@ -278,38 +281,44 @@ struct LeagueMapper {
     // Top-Ligen → weitere nationale → intl. Ligen → intl. Pokale → Nationalteams
     static func sortOrder(for name: String) -> Int {
         switch name {
+        // Deutsche Ligen
         case "1. Bundesliga":            return 0
         case "2. Bundesliga":            return 1
         case "3. Liga":                  return 2
         case "1. Frauen-Bundesliga":     return 3
         case "DFB-Pokal":                return 4
-        case "Champions League":         return 5
-        case "Europa League":            return 6
-        case "Conference League":        return 7
-        case "Frauen Champions League":  return 8
-        case "Premier League":           return 10
-        case "La Liga":                  return 11
-        case "Serie A":                  return 12
-        case "Ligue 1":                  return 13
-        case "Eredivisie":               return 14
-        case "Liga Portugal":            return 15
-        case "Super League":             return 16
-        case "Süper Lig":                return 17
-        case "Österreich Liga":          return 18
-        case "MLS":                      return 20
-        case "Saudi Pro League":         return 21
-        case "Relegation":               return 22
-        case "FA Cup":                   return 25
-        case "Copa del Rey":             return 26
-        case "Coppa Italia":             return 27
-        case "Coupe de France":          return 28
-        case "Weltmeisterschaft":        return 30
-        case "Europameisterschaft":      return 31
-        case "Nations League":           return 32
-        case "WM Qualifikation":         return 33
-        case "EM Qualifikation":         return 34
-        case "Frauen WM":                return 35
-        case "Frauen EM":                return 36
+        // Europäische Club-Wettbewerbe
+        case "Champions League":         return 10
+        case "Europa League":            return 11
+        case "Conference League":        return 12
+        // Internationale Ligen
+        case "Premier League":           return 20
+        case "La Liga":                  return 21
+        case "Serie A":                  return 22
+        case "Ligue 1":                  return 23
+        case "Eredivisie":               return 24
+        case "Liga Portugal":            return 25
+        case "Super League":             return 26
+        case "Süper Lig":                return 27
+        case "Österreich Liga":          return 28
+        case "MLS":                      return 30
+        case "Saudi Pro League":         return 31
+        // Internationale Pokale
+        case "FA Cup":                   return 40
+        case "Copa del Rey":             return 41
+        case "Coppa Italia":             return 42
+        case "Coupe de France":          return 43
+        case "Frauen Champions League":  return 44
+        // Nationalmannschaften
+        case "Weltmeisterschaft":        return 50
+        case "Europameisterschaft":      return 51
+        // Rest
+        case "Nations League":           return 60
+        case "WM Qualifikation":         return 61
+        case "EM Qualifikation":         return 62
+        case "Frauen WM":                return 63
+        case "Frauen EM":                return 64
+        case "Relegation":               return 65
         default:                         return 99
         }
     }
@@ -357,6 +366,7 @@ enum QualificationZone: Hashable {
 class CommunityLeaguesViewModel: ObservableObject {
     @Published var openTipsPerLeague: [String: Int] = [:]
     @Published var liveLeagues: Set<String> = []
+    @Published var openBonusTips: Int = 0
 
     private let api = APIFootballService()
     private let betManager = BetManager()
@@ -467,6 +477,25 @@ class CommunityLeaguesViewModel: ObservableObject {
             }
             openTipsPerLeague["Relegation"] = relegationOpen
         }
+
+        // Bonus-Tipps zählen (nur für Ligen, deren erster Spieltag noch nicht begonnen hat)
+        if let myId = Auth.auth().currentUser?.uid, let cid = community.id {
+            let bonusManager = BonusBetManager()
+            let answers = await bonusManager.loadBonusAnswers(communityId: cid, userId: myId)
+            let activeCatSet = community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
+            var bonusCount = 0
+            for leagueName in community.activeLeagues where LeagueMapper.getID(for: leagueName) != 9999 {
+                let lid = LeagueMapper.getID(for: leagueName)
+                let maxMd = LeagueMapper.getMaxMatchday(for: leagueName)
+                let result = await api.determineDisplayRoundWithMatches(for: lid, maxMatchday: maxMd)
+                // Bonus nur zählen wenn noch kein Spiel begonnen hat
+                let bonusUnlocked = result.matches.allSatisfy { ["NS", "TBD"].contains($0.fixture.status.short) }
+                guard bonusUnlocked else { continue }
+                let cats = bonusCategoriesForLeague(leagueName, activeCategorySet: activeCatSet)
+                bonusCount += cats.filter { (answers["\(leagueName)|\($0)"] ?? "").isEmpty }.count
+            }
+            openBonusTips = bonusCount
+        }
     }
 }
 
@@ -563,6 +592,10 @@ struct CommunityLeaguesView: View {
                                 }
 
                                 Spacer()
+
+                                if vm.openBonusTips > 0 {
+                                    OpenTipsBadge(count: vm.openBonusTips)
+                                }
 
                                 Image(systemName: "chevron.right")
                                     .foregroundColor(.gray).font(.caption.bold())

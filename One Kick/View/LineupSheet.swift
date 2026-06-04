@@ -42,11 +42,6 @@ struct LineupSheet: View {
                                     withAnimation(.easeInOut(duration: 0.2)) { selectedTab = i }
                                 }) {
                                     HStack(spacing: 6) {
-                                        AsyncImage(url: URL(string: lineups[i].team.logo)) { img in
-                                            img.resizable().scaledToFit()
-                                        } placeholder: { Color.clear }
-                                        .frame(width: 18, height: 18)
-
                                         Text(lineups[i].team.name)
                                             .font(.system(size: 12, weight: .bold))
                                             .lineLimit(1)
@@ -97,13 +92,6 @@ struct LineupTeamSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                AsyncImage(url: URL(string: lineup.team.logo)) { img in
-                    img.resizable().scaledToFit()
-                } placeholder: {
-                    Circle().fill(Color.gray.opacity(0.2))
-                }
-                .frame(width: 28, height: 28)
-
                 VStack(alignment: .leading, spacing: 2) {
                     Text(lineup.team.name)
                         .font(.system(size: 15, weight: .bold)).foregroundColor(.white)

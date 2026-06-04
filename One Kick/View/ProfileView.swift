@@ -20,6 +20,14 @@ struct ProfileView: View {
     @State private var showPasswordResetAlert = false
     @State private var passwordResetSent = false
     @State private var photoItem: PhotosPickerItem? = nil
+    @State private var showDeleteAccountAlert = false
+    @State private var isDeletingAccount = false
+    @State private var deleteAccountError: String? = nil
+    @State private var showBadgePicker = false
+    @State private var selectedBadgeIds: [String] = []
+    @ObservedObject private var badgeSystem = BadgeSystem.shared
+    @State private var showLanguagePicker = false
+    @EnvironmentObject var lm: LanguageManager
 
     private var initials: String {
         let name = authManager.displayName ?? authManager.userEmail ?? "?"
@@ -34,33 +42,51 @@ struct ProfileView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         profileHeader
+                        badgesSection
                         profilSection
                         tippingSection
                         settingsSection
                         legalSection
                         logoutButton
+                        deleteAccountButton
                         Spacer(minLength: 40)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                 }
             }
-            .navigationTitle("Profil & Einstellungen")
+            .navigationTitle(lm.t("profile.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fertig") { dismiss() }
+                    Button(lm.t("action.done")) { dismiss() }
                         .foregroundColor(.oneKickNeon)
                 }
             }
             .sheet(isPresented: $showEditName) {
                 EditDisplayNameView().environmentObject(authManager)
             }
-            .alert("Passwort zurücksetzen", isPresented: $showPasswordResetAlert) {
-                Button("E-Mail senden") { sendPasswordReset() }
-                Button("Abbrechen", role: .cancel) {}
+            .alert(lm.t("profile.passwordReset.title"), isPresented: $showPasswordResetAlert) {
+                Button(lm.t("action.send")) { sendPasswordReset() }
+                Button(lm.t("action.cancel"), role: .cancel) {}
             } message: {
-                Text("Wir senden dir einen Link an \(authManager.userEmail ?? "deine E-Mail-Adresse") zum Zurücksetzen deines Passworts.")
+                Text(lm.t("profile.passwordReset.msg"))
+            }
+            .alert(lm.t("profile.deleteAccount.title"), isPresented: $showDeleteAccountAlert) {
+                Button(lm.t("action.delete"), role: .destructive) {
+                    Task { await performDeleteAccount() }
+                }
+                Button(lm.t("action.cancel"), role: .cancel) {}
+            } message: {
+                Text(lm.t("profile.deleteAccount.msg"))
+            }
+            .alert(lm.t("general.error"), isPresented: Binding(
+                get: { deleteAccountError != nil },
+                set: { if !$0 { deleteAccountError = nil } }
+            )) {
+                Button(lm.t("general.ok"), role: .cancel) {}
+            } message: {
+                Text(deleteAccountError ?? "")
             }
             .overlay(alignment: .bottom) {
                 if passwordResetSent {
@@ -116,7 +142,7 @@ struct ProfileView: View {
                 }
                 Text(authManager.userEmail ?? "")
                     .font(.caption).foregroundColor(.gray)
-                Text("Foto tippen zum Ändern")
+                Text(lm.t("profile.tapPhoto"))
                     .font(.caption2).foregroundColor(.gray.opacity(0.6))
             }
         }
@@ -127,18 +153,75 @@ struct ProfileView: View {
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.06), lineWidth: 1))
     }
 
+    // MARK: - Badges-Sektion
+
+    private var badgesSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionLabel(lm.t("profile.section.badges"))
+            VStack(alignment: .leading, spacing: 12) {
+                BadgesRow(
+                    badgeIds: badgeSystem.selectedBadgeIds,
+                    placeholder: lm.t("profile.badges.noneSelected")
+                )
+                Button(action: {
+                    selectedBadgeIds = badgeSystem.selectedBadgeIds
+                    showBadgePicker = true
+                }) {
+                    HStack {
+                        Image(systemName: "medal.fill").foregroundColor(.oneKickNeon)
+                        Text(badgeSystem.earnedBadgeIds.isEmpty ? lm.t("profile.badges.unlock") : lm.t("profile.badges.edit"))
+                            .font(.subheadline).foregroundColor(.white)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption.bold()).foregroundColor(.gray)
+                    }
+                    .padding(14)
+                    .background(Color.oneKickDarkGray)
+                    .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(14)
+            .background(Color.oneKickDarkGray.opacity(0.4))
+            .cornerRadius(16)
+        }
+        .sheet(isPresented: $showBadgePicker) {
+            BadgePickerSheet(
+                earnedIds: badgeSystem.earnedBadgeIds,
+                selectedIds: $selectedBadgeIds
+            )
+        }
+        .task { await badgeSystem.load() }
+    }
+
     // MARK: - Profil-Sektion
 
     private var profilSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("Mein Profil")
+            sectionLabel(lm.t("profile.section.profile"))
             VStack(spacing: 0) {
-                rowButton(title: "Anzeigename ändern", icon: "person.fill") {
+                rowButton(title: lm.t("profile.changeName"), icon: "person.fill") {
                     showEditName = true
                 }
                 rowDivider
                 NavigationLink(destination: FavoriteSettingsView()) {
-                    rowContent(title: "Lieblingsligen & -teams", icon: "star.fill")
+                    rowContent(title: lm.t("profile.favorites"), icon: "star.fill")
+                }
+                .buttonStyle(.plain)
+                rowDivider
+                Button(action: { showLanguagePicker = true }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 13)).foregroundColor(.oneKickNeon).frame(width: 28)
+                        Text(lm.t("profile.language"))
+                            .font(.subheadline).foregroundColor(.white)
+                        Spacer()
+                        let lang = LanguageManager.supportedLanguages.first { $0.code == lm.currentLanguage }
+                        Text(lang.map { "\($0.flag) \($0.name)" } ?? "Deutsch")
+                            .font(.caption).foregroundColor(.gray)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11)).foregroundColor(.gray)
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 14).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -146,13 +229,17 @@ struct ProfileView: View {
             .cornerRadius(16)
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
         }
+        .sheet(isPresented: $showLanguagePicker) {
+            LanguagePickerSheet()
+                .environmentObject(lm)
+        }
     }
 
     // MARK: - Tippen-Sektion
 
     private var tippingSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("Tippen")
+            sectionLabel(lm.t("profile.section.tipping"))
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
                     Image(systemName: "arrow.left.arrow.right")
@@ -160,7 +247,7 @@ struct ProfileView: View {
                         .foregroundColor(.oneKickNeon)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Übergreifendes Tippen")
+                        Text(lm.t("profile.crossCommunity"))
                             .font(.subheadline)
                             .foregroundColor(.white)
                         Text("Tipp automatisch in allen Communities mit gleicher Liga speichern")
@@ -182,7 +269,7 @@ struct ProfileView: View {
                         .foregroundColor(.oneKickNeon)
                         .frame(width: 28)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Wettquoten anzeigen")
+                        Text(lm.t("profile.showOdds"))
                             .font(.subheadline)
                             .foregroundColor(.white)
                         Text("Quoten von Wettanbietern in der Spielübersicht einblenden")
@@ -199,7 +286,7 @@ struct ProfileView: View {
                 .padding(.vertical, 14)
                 rowDivider
                 NavigationLink(destination: NotificationSettingsView()) {
-                    rowContent(title: "Tipperinnerungen", icon: "bell.fill")
+                    rowContent(title: lm.t("profile.notifications"), icon: "bell.fill")
                 }
                 .buttonStyle(.plain)
             }
@@ -213,15 +300,15 @@ struct ProfileView: View {
 
     private var legalSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("Rechtliches")
+            sectionLabel(lm.t("profile.section.legal"))
             VStack(spacing: 0) {
                 NavigationLink(destination: ImpressumView()) {
-                    rowContent(title: "Impressum", icon: "doc.text.fill")
+                    rowContent(title: lm.t("profile.impressum"), icon: "doc.text.fill")
                 }
                 .buttonStyle(.plain)
                 rowDivider
                 NavigationLink(destination: PrivacyPolicyView()) {
-                    rowContent(title: "Datenschutz", icon: "lock.shield.fill")
+                    rowContent(title: lm.t("profile.privacy"), icon: "lock.shield.fill")
                 }
                 .buttonStyle(.plain)
             }
@@ -235,9 +322,9 @@ struct ProfileView: View {
 
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionLabel("Sicherheit")
+            sectionLabel(lm.t("profile.section.security"))
             VStack(spacing: 0) {
-                rowButton(title: "Passwort zurücksetzen", icon: "lock.fill") {
+                rowButton(title: lm.t("profile.resetPassword"), icon: "lock.fill") {
                     showPasswordResetAlert = true
                 }
             }
@@ -255,7 +342,7 @@ struct ProfileView: View {
             authManager.signOut()
             dismiss()
         }) {
-            Text("Ausloggen")
+            Text(lm.t("profile.logout"))
                 .font(.subheadline).bold()
                 .foregroundColor(.red)
                 .frame(maxWidth: .infinity)
@@ -263,6 +350,42 @@ struct ProfileView: View {
                 .background(Color.oneKickDarkGray)
                 .cornerRadius(16)
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Account löschen
+
+    private var deleteAccountButton: some View {
+        Button(action: {
+            HapticManager.instance.impact(style: .medium)
+            showDeleteAccountAlert = true
+        }) {
+            Group {
+                if isDeletingAccount {
+                    ProgressView().tint(.red)
+                } else {
+                    Text(lm.t("profile.deleteAccount"))
+                        .font(.subheadline).bold()
+                        .foregroundColor(.red.opacity(0.7))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.oneKickDarkGray)
+            .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.red.opacity(0.15), lineWidth: 1))
+        }
+        .disabled(isDeletingAccount)
+    }
+
+    private func performDeleteAccount() async {
+        isDeletingAccount = true
+        do {
+            try await authManager.deleteAccount()
+            dismiss()
+        } catch {
+            isDeletingAccount = false
+            deleteAccountError = error.localizedDescription
         }
     }
 
@@ -300,6 +423,7 @@ struct ProfileView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .contentShape(Rectangle())
     }
 
     private var rowDivider: some View {

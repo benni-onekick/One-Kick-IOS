@@ -33,20 +33,17 @@ struct LeagueSelectionSheet: View {
                 Color.oneKickBlack.ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 30) {
-                        ForEach(categories, id: \.name) { category in
+                    VStack(spacing: 0) {
+                        ForEach(Array(categories.enumerated()), id: \.element.name) { idx, category in
                             VStack(alignment: .leading, spacing: 12) {
-                                // Kategorie Titel (Neon)
                                 Text(category.name.uppercased())
                                     .font(.caption).bold()
                                     .foregroundColor(.oneKickNeon)
                                     .padding(.leading, 5)
                                     .padding(.horizontal)
-                                
-                                // Grid für die Ligen
+
                                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
                                     ForEach(category.leagues, id: \.self) { league in
-                                        // Wir nutzen den Chip, der global verfügbar ist
                                         LeagueSelectionChip(
                                             title: league,
                                             isSelected: selectedLeagues.contains(league),
@@ -56,9 +53,16 @@ struct LeagueSelectionSheet: View {
                                 }
                                 .padding(.horizontal)
                             }
+                            .padding(.vertical, 20)
+
+                            if idx < categories.count - 1 {
+                                Divider()
+                                    .background(Color.white.opacity(0.08))
+                                    .padding(.horizontal)
+                            }
                         }
                     }
-                    .padding(.vertical, 20)
+                    .padding(.vertical, 8)
                 }
             }
             .navigationTitle("Wettbewerbe")

@@ -43,8 +43,7 @@ struct OpenGameCard: View {
 
             HStack(spacing: 8) {
                 HStack(spacing: 6) {
-                    teamLogo(tip.match.teams.home.logo)
-                    Text(tip.match.teams.home.name)
+                    Text(teamNameWithFlag(tip.match.teams.home.name))
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(1)
@@ -69,13 +68,12 @@ struct OpenGameCard: View {
                 }
 
                 HStack(spacing: 6) {
-                    Text(tip.match.teams.away.name)
+                    Text(teamNameWithFlag(tip.match.teams.away.name))
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                         .multilineTextAlignment(.trailing)
-                    teamLogo(tip.match.teams.away.logo)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -124,12 +122,4 @@ struct OpenGameCard: View {
         }
     }
 
-    @ViewBuilder
-    private func teamLogo(_ url: String) -> some View {
-        AsyncImage(url: URL(string: url)) { phase in
-            if let image = phase.image { image.resizable().scaledToFit() }
-            else { Circle().fill(Color.gray.opacity(0.3)) }
-        }
-        .frame(width: 26, height: 26)
-    }
 }

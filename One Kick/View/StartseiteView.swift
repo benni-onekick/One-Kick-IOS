@@ -24,6 +24,7 @@ class StartseiteViewModel: ObservableObject {
     private let betManager = BetManager()
 
     func loadData(communities: [CommunityModel]) async {
+        guard !communities.isEmpty else { return }
         var seen = Set<Int>()
         var activeLeagueIds: [Int] = []
         for community in communities {
@@ -60,7 +61,7 @@ class StartseiteViewModel: ObservableObject {
             }
         }
 
-        // Phase 2: Current Matches laden
+        // Phase 2: Current Matches laden (sequenziell – verhindert Rate-Limit-Pile-up)
         var fullPreloaded: [Int: [MatchData]] = [:]
         var tipsPreloaded: [Int: [MatchData]] = [:]
         for id in allNeededIds {
@@ -95,7 +96,14 @@ class StartseiteViewModel: ObservableObject {
             tipsPreloaded[id] = regular
         }
 
-        // Phase 4: DateRange-Fallback für Matches außerhalb des 14-Tage-Fensters
+        // UI sofort nach Phase 3 aktualisieren (ohne auf Phase 4 zu warten)
+        tipsPreloaded[9999] = relegationPool.filter { ["NS", "TBD"].contains($0.fixture.status.short) }
+        await loadOpenTips(communities: communities, preloaded: tipsPreloaded)
+        await loadTopMatches(preloaded: fullPreloaded, activeLeagueIds: activeLeagueIds)
+        await loadTopMatchTips(communities: communities)
+        await loadPredictions()
+
+        // Phase 4: DateRange-Fallback im Hintergrund (erweitert Relegations-Pool)
         let relDateFmt = DateFormatter(); relDateFmt.dateFormat = "yyyy-MM-dd"
         let relFrom = relDateFmt.string(from: Date().addingTimeInterval(-21 * 86400))
         let relTo   = relDateFmt.string(from: Date().addingTimeInterval(21 * 86400))
@@ -115,12 +123,12 @@ class StartseiteViewModel: ObservableObject {
                 if isP { relegationPool.append(m) }
             }
         }
-        tipsPreloaded[9999] = relegationPool.filter { ["NS", "TBD"].contains($0.fixture.status.short) }
-
-        await loadOpenTips(communities: communities, preloaded: tipsPreloaded)
-        await loadTopMatches(preloaded: fullPreloaded, activeLeagueIds: activeLeagueIds)
-        await loadTopMatchTips(communities: communities)
-        await loadPredictions()
+        // Stilles Update: Relegations-Daten nach Phase 4 einarbeiten (falls vorhanden)
+        let updatedPool = relegationPool.filter { ["NS", "TBD"].contains($0.fixture.status.short) }
+        if updatedPool.count != (tipsPreloaded[9999]?.count ?? 0) {
+            tipsPreloaded[9999] = updatedPool
+            await loadOpenTips(communities: communities, preloaded: tipsPreloaded)
+        }
     }
 
     func removeTip(_ tip: OpenTipItem) {
@@ -235,11 +243,13 @@ class StartseiteViewModel: ObservableObject {
 struct StartseiteView: View {
     @StateObject private var viewModel = StartseiteViewModel()
     @EnvironmentObject var communityManager: CommunityManager
+    @EnvironmentObject var lm: LanguageManager
     @EnvironmentObject var authManager: AuthManager
 
     @State private var showBettingPopup = false
     @State private var selectedTip: OpenTipItem?
     @State private var showProfileSheet = false
+    @State private var showCommunityMenu = false
     @State private var liveMatchForInfo: MatchData?
     @State private var lastRefreshAt: Date = .distantPast
 
@@ -265,15 +275,16 @@ struct StartseiteView: View {
 
                     OneKickHeader(onProfile: { showProfileSheet = true })
 
-                    Text("Willkommen zurück\(greetingName)!")
+                    Text(authManager.isFirstLogin
+                         ? "Willkommen bei OneKick\(greetingName)!"
+                         : "Willkommen zurück\(greetingName)!")
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(.white)
                         .padding(.horizontal)
                         .padding(.top, -8)
 
-                    // Offene Tipps nur anzeigen wenn in einer Community
                     if hasCommunities {
-                        sectionHeader("Meine offenen Tipps")
+                        sectionHeader(lm.t("home.openTips"))
 
                         if viewModel.isLoadingTips {
                             loadingRow()
@@ -295,29 +306,55 @@ struct StartseiteView: View {
                             }
                             .padding(.horizontal)
                         }
-                    }
 
-                    sectionHeader("Top Spiele")
+                        sectionHeader(lm.t("home.topMatches"))
 
-                    if viewModel.isLoadingTop {
-                        loadingRow()
-                    } else if viewModel.topMatches.isEmpty {
-                        emptyState(icon: "sportscourt", text: "Keine Top-Spiele verfügbar.")
-                    } else {
-                        VStack(spacing: 12) {
-                            ForEach(viewModel.topMatches, id: \.fixture.id) { match in
-                                let isFuture = ["NS", "TBD"].contains(match.fixture.status.short)
-                                let isLiveMatch = ["1H","2H","HT","ET","P","LIVE"].contains(match.fixture.status.short)
-                                ApiMatchRow(
-                                    match: match,
-                                    myTip: isFuture ? nil : viewModel.topMatchTips[match.fixture.id],
-                                    showLeague: true,
-                                    odds: isFuture ? viewModel.odds[match.fixture.id] : nil,
-                                    onLiveInfo: isLiveMatch ? { liveMatchForInfo = match } : nil
-                                )
-                                .padding(.horizontal)
+                        if viewModel.isLoadingTop {
+                            loadingRow()
+                        } else if viewModel.topMatches.isEmpty {
+                            emptyState(icon: "sportscourt", text: "Keine Top-Spiele verfügbar.")
+                        } else {
+                            VStack(spacing: 12) {
+                                ForEach(viewModel.topMatches, id: \.fixture.id) { match in
+                                    let isFuture = ["NS", "TBD"].contains(match.fixture.status.short)
+                                    let isLiveMatch = ["1H","2H","HT","ET","P","LIVE"].contains(match.fixture.status.short)
+                                    ApiMatchRow(
+                                        match: match,
+                                        myTip: isFuture ? nil : viewModel.topMatchTips[match.fixture.id],
+                                        showLeague: true,
+                                        odds: isFuture ? viewModel.odds[match.fixture.id] : nil,
+                                        onLiveInfo: isLiveMatch ? { liveMatchForInfo = match } : nil
+                                    )
+                                    .padding(.horizontal)
+                                }
                             }
                         }
+                    } else {
+                        VStack(spacing: 20) {
+                            Spacer(minLength: 40)
+                            Image(systemName: "person.3.sequence.fill")
+                                .font(.system(size: 70))
+                                .foregroundColor(.oneKickNeon)
+                            Text("Tritt einer Liga bei oder erstelle deine eigene.")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                            Button(action: {
+                                HapticManager.instance.impact(style: .medium)
+                                showCommunityMenu = true
+                            }) {
+                                Text("Loslegen")
+                                    .font(.headline).bold().foregroundColor(.black)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.oneKickNeon)
+                                    .cornerRadius(14)
+                            }
+                            .padding(.horizontal, 40)
+                            Spacer(minLength: 40)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
 
                     Spacer(minLength: 50)
@@ -343,6 +380,10 @@ struct StartseiteView: View {
         }
         .sheet(isPresented: $showProfileSheet) {
             ProfileView()
+        }
+        .sheet(isPresented: $showCommunityMenu) {
+            CommunityStartMenu()
+                .environmentObject(communityManager)
         }
         .sheet(item: $liveMatchForInfo) { match in
             LiveMatchView(match: match)

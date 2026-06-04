@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "12760577634",
+    "project_id": "one-kick-ff24b",
+    "storage_bucket": "one-kick-ff24b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:12760577634:android:13c3bea097e2c6d901433b",
+        "android_client_info": {
+          "package_name": "com.benni.onekick"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDl1d9YYYFdCUPe-gLHWior2JF0B62yVaA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

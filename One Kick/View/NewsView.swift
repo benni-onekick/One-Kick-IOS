@@ -10,6 +10,7 @@ import SwiftUI
 struct NewsView: View {
     @EnvironmentObject var newsService: NewsService
     @EnvironmentObject var communityManager: CommunityManager
+    @EnvironmentObject var lm: LanguageManager
     @State private var showProfileSheet = false
     @State private var selectedTab: NewsTab = .news
     @State private var favoritesOnly = false
@@ -23,7 +24,15 @@ struct NewsView: View {
     enum NewsTab: String, CaseIterable {
         case news = "News"
         case transfers = "Transfers"
-        case injuries = "Verletzungsupdate"
+        case injuries = "Injuries"
+
+        var localizedLabel: String {
+            switch self {
+            case .news:      return LanguageManager.shared.t("tab.news")
+            case .transfers: return LanguageManager.shared.t("news.transfers")
+            case .injuries:  return "Injuries"
+            }
+        }
     }
 
     private var settings: UserSettings { UserSettings.shared }
@@ -139,7 +148,7 @@ struct NewsView: View {
                     HapticManager.instance.impact(style: .light)
                     selectedTab = tab
                 }) {
-                    Text(tab.rawValue)
+                    Text(tab.localizedLabel)
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(selectedTab == tab ? .black : .gray)
                         .frame(maxWidth: .infinity)
@@ -159,7 +168,7 @@ struct NewsView: View {
                 .font(.system(size: 11))
                 .foregroundColor(favoritesOnly ? .oneKickNeon : .gray)
 
-            Text("Nur Favoriten")
+            Text(lm.t("news.onlyFavorites"))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(favoritesOnly ? .oneKickNeon : .gray)
 
@@ -195,7 +204,7 @@ struct NewsView: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                Text("Alle aktiven Ligen")
+                Text(lm.t("news.allLeagues"))
                     .font(.system(size: 11))
                     .foregroundColor(.gray.opacity(0.6))
             }
@@ -222,12 +231,6 @@ struct NewsView: View {
             ForEach(grouped, id: \.key) { teamName, teamInjuries in
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
-                        if let logo = teamInjuries.first?.team.logo {
-                            AsyncImage(url: URL(string: logo)) { img in
-                                img.resizable().scaledToFit()
-                            } placeholder: { Color.clear }
-                            .frame(width: 20, height: 20)
-                        }
                         Text(teamName)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(.gray)
@@ -336,11 +339,6 @@ struct InjuryCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AsyncImage(url: URL(string: injury.team.logo)) { img in
-                img.resizable().scaledToFit()
-            } placeholder: { Circle().fill(Color.gray.opacity(0.2)) }
-            .frame(width: 34, height: 34)
-
             VStack(alignment: .leading, spacing: 3) {
                 Text(injury.player.name)
                     .font(.system(size: 14, weight: .bold)).foregroundColor(.white).lineLimit(1)
