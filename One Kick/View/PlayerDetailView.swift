@@ -149,6 +149,7 @@ struct PlayerDetailView: View {
     let community: CommunityModel
 
     @State private var userSelectedBadges: [String] = []
+    @State private var showFullImage = false
     private let liveStatuses: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
 
     private func isLeagueLive(_ league: LeaguePointsEntry) -> Bool {
@@ -191,6 +192,16 @@ struct PlayerDetailView: View {
             ScrollView {
                 LazyVStack(spacing: 10) {
                     VStack(spacing: 4) {
+                        AvatarView(displayName: entry.displayName,
+                                   photoBase64: entry.photoBase64,
+                                   size: 88)
+                            .onTapGesture {
+                                guard entry.photoBase64 != nil else { return }
+                                HapticManager.instance.impact(style: .light)
+                                showFullImage = true
+                            }
+                            .padding(.bottom, 4)
+
                         Text(entry.displayName)
                             .font(.title2).bold()
                             .foregroundColor(isCurrentUser ? .oneKickNeon : .white)
@@ -244,6 +255,11 @@ struct PlayerDetailView: View {
         }
         .navigationTitle(isCurrentUser ? "Meine Tipps" : entry.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(isPresented: $showFullImage) {
+            if let photo = entry.photoBase64 {
+                FullScreenImageView(photoBase64: photo)
+            }
+        }
     }
 }
 

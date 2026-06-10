@@ -7,6 +7,46 @@
 
 import SwiftUI
 
+// MARK: - Badge-Visual (Tier-Ring + SF-Symbol)
+
+/// Programmatisch gestaltetes Badge: Kreis mit Tier-Verlaufsring (Bronze/Silber/Gold)
+/// und SF-Symbol mittig. Keine fremden Bilder/Marken → App-Store-konform.
+struct BadgeIcon: View {
+    let badge: Badge
+    var size: CGFloat = 44
+    var locked: Bool = false
+
+    private var tierColors: [Color] {
+        switch badge.tier {
+        case 3:  return [Color(red: 1.0, green: 0.84, blue: 0.0),  Color(red: 0.95, green: 0.70, blue: 0.10)] // Gold
+        case 2:  return [Color(white: 0.85), Color(white: 0.55)]                                              // Silber
+        default: return [Color(red: 0.82, green: 0.55, blue: 0.28), Color(red: 0.60, green: 0.36, blue: 0.16)] // Bronze
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.oneKickDarkGray)
+            Circle()
+                .strokeBorder(
+                    AngularGradient(colors: locked ? [Color.white.opacity(0.12)] : tierColors + [tierColors[0]],
+                                    center: .center),
+                    lineWidth: max(2, size * 0.07)
+                )
+            Image(systemName: badge.icon)
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .foregroundStyle(
+                    locked
+                    ? AnyShapeStyle(Color.gray.opacity(0.5))
+                    : AnyShapeStyle(LinearGradient(colors: tierColors, startPoint: .top, endPoint: .bottom))
+                )
+        }
+        .frame(width: size, height: size)
+        .opacity(locked ? 0.55 : 1)
+    }
+}
+
 // MARK: - Einzelnes Badge-Chip
 
 struct BadgeChip: View {
@@ -16,8 +56,7 @@ struct BadgeChip: View {
 
     var body: some View {
         HStack(spacing: compact ? 4 : 6) {
-            Text(badge.emoji)
-                .font(.system(size: compact ? 14 : 18))
+            BadgeIcon(badge: badge, size: compact ? 18 : 24)
             if !compact {
                 Text(badge.name)
                     .font(.system(size: 12, weight: .semibold))
@@ -160,8 +199,7 @@ private struct BadgePickerCell: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 8) {
-                Text(badge.emoji).font(.system(size: 30))
-                    .opacity(locked ? 0.3 : 1)
+                BadgeIcon(badge: badge, size: 46, locked: locked)
                 Text(badge.name)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(locked ? .gray : .white)
@@ -172,6 +210,26 @@ private struct BadgePickerCell: View {
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
+
+                // Fortschrittsbalken für noch nicht erreichte, numerische Badges
+                if locked, badge.metric.isProgressable,
+                   let value = BadgeSystem.shared.currentValue(for: badge) {
+                    let prog = BadgeSystem.shared.progress(for: badge)
+                    VStack(spacing: 3) {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.white.opacity(0.1))
+                                Capsule().fill(Color.oneKickNeon)
+                                    .frame(width: max(0, geo.size.width * prog))
+                            }
+                        }
+                        .frame(height: 5)
+                        Text("\(min(value, badge.goal))/\(badge.goal) · \(Int(prog * 100)) %")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.top, 2)
+                }
             }
             .padding(12)
             .frame(maxWidth: .infinity)
@@ -203,7 +261,7 @@ struct BadgeUnlockedToast: View {
     let badge: Badge
     var body: some View {
         HStack(spacing: 12) {
-            Text(badge.emoji).font(.system(size: 28))
+            BadgeIcon(badge: badge, size: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Badge freigeschaltet!")
                     .font(.caption.bold()).foregroundColor(.oneKickNeon)

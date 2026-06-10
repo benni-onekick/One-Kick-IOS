@@ -1,6 +1,6 @@
 /* Tabs */
 "tab.start" = "Start";
-"tab.tippen" = "Tipping";
+"tab.tippen" = "My Tips";
 "tab.news" = "News";
 "tab.statistik" = "Statistics";
 "tab.community" = "Community";
@@ -58,7 +58,7 @@
 "community.global" = "Global Community";
 "community.joinCode" = "Join with Code";
 "community.myRankings" = "My Rankings";
-"community.loading" = "Loading \u{2026}";
+"community.loading" = "Loading …";
 "community.create" = "Create League";
 "community.noLeague" = "No League";
 "community.inviteCode" = "Your Invite Code";
@@ -72,7 +72,7 @@
 "tipping.edit" = "Edit Tip";
 "tipping.liveInfo" = "Live Info";
 "tipping.rounds" = "Rounds";
-"tipping.infoOnly" = "For information only \u{00B7} no real money";
+"tipping.infoOnly" = "For information only · no real money";
 
 /* Login */
 "login.signIn" = "Sign In";
@@ -88,7 +88,7 @@
 "login.or" = "or";
 
 /* General */
-"general.loading" = "Loading \u{2026}";
+"general.loading" = "Loading …";
 "general.noData" = "No Data";
 "general.error" = "Error";
 "general.yes" = "Yes";
@@ -99,7 +99,7 @@
 "general.rank" = "Rank";
 "general.of" = "of";
 "general.notAvailable" = "Not available";
-"general.loadingLeagues" = "Loading leagues \u{2026}";
+"general.loadingLeagues" = "Loading leagues …";
 
 /* Community (additions) */
 "community.of" = "of";
@@ -118,7 +118,7 @@
 "profile.passwordReset.msg" = "We will send you a link to reset your password.";
 "profile.deleteAccount.title" = "Delete account?";
 "profile.deleteAccount.msg" = "All your tips and data will be permanently deleted.";
-"profile.passwordReset.sent" = "\u{2713} Email sent";
+"profile.passwordReset.sent" = "✓ Email sent";
 
 /* Points view */
 "punkteview.overall" = "Overall";
@@ -126,9 +126,9 @@
 "punkteview.noTips" = "No Tips Yet";
 "punkteview.currentLeader" = "Current Leader";
 "punkteview.weeklyWinner" = "Week Winner";
-"punkteview.loadingPoints" = "Loading season points \u{2026}";
+"punkteview.loadingPoints" = "Loading season points …";
 "punkteview.noLeaderboard" = "The leaderboard appears once tips have been placed.";
-"punkteview.loadingWeek" = "Loading matchweek \u{2026}";
+"punkteview.loadingWeek" = "Loading matchweek …";
 "punkteview.noMatches" = "No matches this week";
 "punkteview.noMatchesDesc" = "No matches are scheduled this week for these leagues.";
 "punkteview.points" = "Points";
@@ -173,7 +173,7 @@
 
 /* Imprint */
 "legal.impressum.title" = "Imprint";
-"legal.impressum.section1" = "Legal Notice acc. \u{00a7} 5 TMG";
+"legal.impressum.section1" = "Legal Notice acc. § 5 TMG";
 "legal.impressum.section2" = "Contact";
 "legal.impressum.section3" = "Note";
 "legal.impressum.note" = "This app is operated as a private, non-commercial project. No registered business exists.";
@@ -190,11 +190,11 @@
 "legal.privacy.s3.link" = "Firebase Privacy Policy: firebase.google.com/support/privacy";
 "legal.privacy.s4.title" = "Firebase Firestore (Database)";
 "legal.privacy.s4.intro" = "The following data is stored in Firebase Firestore (Google LLC) to provide app features:";
-"legal.privacy.s4.b1" = "\u{2022} Tips, usernames, community memberships, match results, and bonus tips";
-"legal.privacy.s4.b2" = "\u{2022} Chat messages within communities (text, sender ID, timestamp)";
-"legal.privacy.s4.b3" = "\u{2022} Global Community: selected leagues, points and ranking per league";
-"legal.privacy.s4.b4" = "\u{2022} Badges / Achievements: unlocked and displayed achievements";
-"legal.privacy.s4.b5" = "\u{2022} Join date: timestamp of account creation";
+"legal.privacy.s4.b1" = "• Tips, usernames, community memberships, match results, and bonus tips";
+"legal.privacy.s4.b2" = "• Chat messages within communities (text, sender ID, timestamp)";
+"legal.privacy.s4.b3" = "• Global Community: selected leagues, points and ranking per league";
+"legal.privacy.s4.b4" = "• Badges / Achievements: unlocked and displayed achievements";
+"legal.privacy.s4.b5" = "• Join date: timestamp of account creation";
 "legal.privacy.s4.legal" = "Legal basis: Art. 6 para. 1 lit. b GDPR (contract performance / pre-contractual measures).";
 "legal.privacy.s5.title" = "Sign in with Apple and Google";
 "legal.privacy.s5.text1" = "The app offers sign-in with Apple ID or Google account. Authentication data (name, email) is transmitted to Firebase Authentication. No passwords are stored in the app.";
@@ -214,3 +214,10 @@
 "legal.privacy.s10.text" = "This app contains no advertising, no third-party tracking, and no analytics tools (e.g. Google Analytics).";
 "legal.privacy.stand" = "Last Updated";
 "legal.privacy.date" = "June 2026";
+
+/* Abstimmung / Polls */
+"news.polls" = "Vote";
+"poll.submit" = "Vote";
+"poll.vote" = "vote";
+"poll.votes" = "votes";
+"poll.empty" = "No polls right now";

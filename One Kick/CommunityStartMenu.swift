@@ -13,6 +13,7 @@ struct CommunityStartMenu: View {
     
     @State private var showCreateCommunity = false
     @State private var showJoinCommunity = false
+    @State private var showGlobalJoin = false
     
     var body: some View {
         NavigationStack {
@@ -70,7 +71,29 @@ struct CommunityStartMenu: View {
                         .cornerRadius(15)
                         .foregroundColor(.white)
                     }
-                    
+
+                    // Button: Globaler Community beitreten
+                    Button(action: { showGlobalJoin = true }) {
+                        HStack {
+                            Image(systemName: "globe.europe.africa.fill")
+                                .font(.title)
+                            VStack(alignment: .leading) {
+                                Text("Globaler Community beitreten")
+                                    .font(.headline)
+                                Text("Messe dich mit allen App-Nutzern")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding()
+                        .background(Color(UIColor.systemGray6).opacity(0.12))
+                        .cornerRadius(15)
+                        .foregroundColor(.oneKickNeon)
+                    }
+
                     Spacer()
                 }
                 .padding()
@@ -103,6 +126,9 @@ struct CommunityStartMenu: View {
             
             .sheet(isPresented: $showJoinCommunity) {
                 JoinCommunitySheet().environmentObject(manager)
+            }
+            .sheet(isPresented: $showGlobalJoin) {
+                GlobalCommunityLeagueSelectionView()
             }
         }
     }

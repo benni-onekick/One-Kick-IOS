@@ -138,8 +138,8 @@ struct LeagueMapper {
     static func getSeason(for leagueID: Int) -> Int {
         switch leagueID {
         case 253: return 2026  // MLS
-        case 307: return 2026  // Saudi Pro League (2026/27-Saison startet August 2026)
         case 1:   return 2026  // Weltmeisterschaft 2026
+        case 525: return 2025  // Frauen Champions League 2025/26
         default:  return APIConfig.currentSeason
         }
     }
@@ -482,7 +482,6 @@ class CommunityLeaguesViewModel: ObservableObject {
         if let myId = Auth.auth().currentUser?.uid, let cid = community.id {
             let bonusManager = BonusBetManager()
             let answers = await bonusManager.loadBonusAnswers(communityId: cid, userId: myId)
-            let activeCatSet = community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
             var bonusCount = 0
             for leagueName in community.activeLeagues where LeagueMapper.getID(for: leagueName) != 9999 {
                 let lid = LeagueMapper.getID(for: leagueName)
@@ -491,6 +490,7 @@ class CommunityLeaguesViewModel: ObservableObject {
                 // Bonus nur zählen wenn noch kein Spiel begonnen hat
                 let bonusUnlocked = result.matches.allSatisfy { ["NS", "TBD"].contains($0.fixture.status.short) }
                 guard bonusUnlocked else { continue }
+                let activeCatSet = community.activeBonusCats(for: leagueName)
                 let cats = bonusCategoriesForLeague(leagueName, activeCategorySet: activeCatSet)
                 bonusCount += cats.filter { (answers["\(leagueName)|\($0)"] ?? "").isEmpty }.count
             }

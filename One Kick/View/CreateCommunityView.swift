@@ -13,10 +13,13 @@ struct CreateCommunityView: View {
     @State private var groupName: String = ""
     @State private var groupStake: String = ""
     @State private var selectedLeagues: Set<String> = []
+    @State private var selectedBonusCategories: Set<String> = []
 
     @State private var showLeagueSelection = false
+    @State private var showBonusSelection = false
 
     @State private var communityLogo: UIImage?
+    @State private var cropItem: CropItem? = nil
     @State private var showImageSourceDialog = false
     @State private var showCamera = false
     @State private var showPhotoPicker = false
@@ -34,9 +37,11 @@ struct CreateCommunityView: View {
                     groupName: $groupName,
                     groupStake: $groupStake,
                     selectedLeagues: $selectedLeagues,
+                    selectedBonusCategories: $selectedBonusCategories,
                     communityLogo: $communityLogo,
                     onLogoTap: { showImageSourceDialog = true },
-                    onLeaguesTap: { showLeagueSelection = true }
+                    onLeaguesTap: { showLeagueSelection = true },
+                    onBonusCategoriesTap: { showBonusSelection = true }
                 )
 
                 // Fester Button am unteren Rand – bewegt sich NICHT mit der Tastatur
@@ -62,8 +67,6 @@ struct CreateCommunityView: View {
                     .background(Color.oneKickBlack)
                 }
             }
-            // Tastatur überlagert den Inhalt – Button bleibt unten
-            .ignoresSafeArea(.keyboard, edges: .bottom)
             .navigationTitle("Community erstellen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -89,15 +92,28 @@ struct CreateCommunityView: View {
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self),
                        let image = UIImage(data: data) {
-                        communityLogo = image
+                        await MainActor.run { cropItem = CropItem(image: image) }
                     }
                 }
             }
             .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.image], allowsMultipleSelection: false) { result in
                 handleFileImport(result: result)
             }
+            .fullScreenCover(item: $cropItem) { item in
+                ImageCropView(
+                    image: item.image,
+                    onCancel: { cropItem = nil },
+                    onCrop: { cropped in
+                        cropItem = nil
+                        communityLogo = cropped
+                    }
+                )
+            }
             .sheet(isPresented: $showLeagueSelection) {
                 LeagueSelectionSheet(selectedLeagues: $selectedLeagues)
+            }
+            .sheet(isPresented: $showBonusSelection) {
+                BonusCategorySelectionSheet(selected: $selectedBonusCategories)
             }
         }
     }
@@ -108,9 +124,14 @@ struct CreateCommunityView: View {
 
     func createCommunity() {
         HapticManager.instance.notification(type: .success)
+        // Default: alle Bonus-Kategorien AUSSER WM-Gruppenphase (die muss der Admin bewusst aktivieren).
+        let bonusCategories: [String] = selectedBonusCategories.isEmpty
+            ? Array(Set(allBonusCategories).subtracting(wmGroupCategories))
+            : Array(selectedBonusCategories)
         let newCommunity = CommunityModel(
             name: groupName,
-            activeLeagues: selectedLeagues
+            activeLeagues: selectedLeagues,
+            activeBonusCategories: bonusCategories
         )
         onCreate(newCommunity)
     }
@@ -119,7 +140,7 @@ struct CreateCommunityView: View {
         if case .success(let urls) = result, let url = urls.first, url.startAccessingSecurityScopedResource() {
             defer { url.stopAccessingSecurityScopedResource() }
             if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
-                communityLogo = image
+                cropItem = CropItem(image: image)
             }
         }
     }

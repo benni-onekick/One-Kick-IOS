@@ -36,6 +36,7 @@ struct LanguagePickerSheet: View {
                                 }
                             }
                             .padding(.vertical, 6)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .listRowBackground(Color.oneKickDarkGray)

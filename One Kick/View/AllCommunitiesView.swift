@@ -25,8 +25,9 @@ struct AllCommunitiesView: View {
                     
                     LazyVStack(spacing: 15) {
                         ForEach(manager.communities) { community in
-                            // HIER IST DER FIX: Ziel ist jetzt die CommunityLeaguesView
-                            NavigationLink(destination: CommunityLeaguesView(community: community)) {
+                            // Ziel ist die Leaderboard-Ansicht (Gesamt/Ligen/Bonus/Chat),
+                            // identisch zur Hauptliste in CommunityView.
+                            NavigationLink(destination: CommunityPunkteView(community: community)) {
                                 CommunityRowCard(community: community)
                             }
                             .buttonStyle(PlainButtonStyle())

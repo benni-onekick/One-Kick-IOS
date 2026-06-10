@@ -14,11 +14,13 @@ struct CreateCommunityForm: View {
     @Binding var groupName: String
     @Binding var groupStake: String
     @Binding var selectedLeagues: Set<String>
+    @Binding var selectedBonusCategories: Set<String>
     @Binding var communityLogo: UIImage?
-    
+
     // Aktionen: Was passiert beim Tippen?
     var onLogoTap: () -> Void
     var onLeaguesTap: () -> Void
+    var onBonusCategoriesTap: () -> Void
     
     var body: some View {
         ScrollView {
@@ -108,7 +110,39 @@ struct CreateCommunityForm: View {
                     }
                 }
                 
-                // 4. EINSATZ (Optionales Feld)
+                // 4. BONUS-TIPPS WÄHLEN
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Bonus-Tipps")
+                        .font(.caption).foregroundColor(.gray)
+                        .padding(.leading, 4)
+
+                    Button(action: {
+                        HapticManager.instance.impact(style: .medium)
+                        onBonusCategoriesTap()
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Bonus-Kategorien auswählen")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                Text(selectedBonusCategories.isEmpty
+                                     ? "Keine aktiv"
+                                     : "\(selectedBonusCategories.count) aktiv")
+                                    .font(.caption)
+                                    .foregroundColor(.oneKickNeon)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding()
+                        .background(Color.oneKickDarkGray)
+                        .cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                    }
+                }
+
+                // 5. EINSATZ (Optionales Feld)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Einsatz (Optional)")
                         .font(.caption).foregroundColor(.gray)

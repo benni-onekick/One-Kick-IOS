@@ -141,54 +141,53 @@ struct LoginView: View {
                     .padding(.horizontal, 20)
                     .disabled(!canSubmit || isLoading)
 
-                    // Social Login (nur im Anmelden-Modus)
-                    if !isRegistering {
-                        HStack {
-                            Rectangle().frame(height: 0.5).foregroundColor(.gray.opacity(0.5))
-                            Text("oder").font(.caption).foregroundColor(.gray)
-                            Rectangle().frame(height: 0.5).foregroundColor(.gray.opacity(0.5))
-                        }
-                        .padding(.horizontal, 20)
+                    // Social Login (in beiden Reitern: Anmelden + Registrieren)
+                    HStack {
+                        Rectangle().frame(height: 0.5).foregroundColor(.gray.opacity(0.5))
+                        Text("oder").font(.caption).foregroundColor(.gray)
+                        Rectangle().frame(height: 0.5).foregroundColor(.gray.opacity(0.5))
+                    }
+                    .padding(.horizontal, 20)
 
-                        // Sign in with Apple
-                        SignInWithAppleButton(.signIn) { request in
-                            let nonce = authManager.generateNonce()
-                            currentNonce = nonce
-                            request.requestedScopes = [.fullName, .email]
-                            request.nonce = authManager.sha256Nonce(nonce)
-                        } onCompletion: { result in
-                            Task { await authManager.handleAppleSignIn(result: result, nonce: currentNonce) }
+                    // Sign in with Apple
+                    SignInWithAppleButton(.signIn) { request in
+                        let nonce = authManager.generateNonce()
+                        currentNonce = nonce
+                        request.requestedScopes = [.fullName, .email]
+                        request.nonce = authManager.sha256Nonce(nonce)
+                    } onCompletion: { result in
+                        Task { await authManager.handleAppleSignIn(result: result, nonce: currentNonce) }
+                    }
+                    .signInWithAppleButtonStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+
+                    // Mit Google anmelden
+                    Button(action: {
+                        #if canImport(GoogleSignIn)
+                        Task { await authManager.signInWithGoogle() }
+                        #endif
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 18, weight: .medium))
+                            Text("Mit Google anmelden")
+                                .font(.headline)
                         }
-                        .signInWithAppleButtonStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
+                        .background(Color.white)
+                        .foregroundColor(.black)
                         .cornerRadius(12)
-                        .padding(.horizontal, 20)
-
-                        // Mit Google anmelden
-                        Button(action: {
-                            #if canImport(GoogleSignIn)
-                            Task { await authManager.signInWithGoogle() }
-                            #endif
-                        }) {
-                            HStack(spacing: 10) {
-                                Image(systemName: "globe")
-                                    .font(.system(size: 18, weight: .medium))
-                                Text("Mit Google anmelden")
-                                    .font(.headline)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.white)
-                            .foregroundColor(.black)
-                            .cornerRadius(12)
-                        }
-                        .padding(.horizontal, 20)
                     }
+                    .padding(.horizontal, 20)
 
                     Spacer(minLength: 40)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .sheet(isPresented: $showResetSheet) {
             passwordResetSheet

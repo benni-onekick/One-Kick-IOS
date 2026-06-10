@@ -230,6 +230,8 @@ struct LeagueBettingView: View {
     let leagueID: Int
     let leagueName: String
     var maxMatchday: Int = 34
+    /// Optionaler Untertitel statt des Community-Namens (z.B. „Globale Community").
+    var subtitle: String? = nil
 
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var lm: LanguageManager
@@ -289,7 +291,7 @@ struct LeagueBettingView: View {
                     }
                     VStack(spacing: 2) {
                         Text(leagueName).font(.headline).bold().foregroundColor(.white)
-                        Text(community.name).font(.caption).foregroundColor(.gray)
+                        Text(subtitle ?? community.name).font(.caption).foregroundColor(.gray)
                     }
                     .allowsHitTesting(false)
                 }

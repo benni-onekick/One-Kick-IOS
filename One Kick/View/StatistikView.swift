@@ -64,18 +64,17 @@ class StatistikViewModel: ObservableObject {
 
     private var cacheKey: String {
         let uid = Auth.auth().currentUser?.uid ?? "anon"
-        return "statsCache_v2_\(uid)"
+        return "statsCache_v3_\(uid)"
     }
 
     func load(communities: [CommunityModel]) async {
         guard !communities.isEmpty else { return }
-        if let cached = loadFromCache(),
-           Date().timeIntervalSince(cached.loadedAt) < cacheTTL,
-           cached.evaluatedTips > 0 {
+        // Stale-while-revalidate: Cache sofort zeigen, dann IMMER frisch neu berechnen.
+        if let cached = loadFromCache(), cached.evaluatedTips > 0 {
             stats = cached
-            return
+        } else {
+            isLoading = true
         }
-        isLoading = true
         let fresh = await compute(communities: communities)
         if fresh.evaluatedTips > 0 {
             // Normale Berechnung erfolgreich
@@ -168,6 +167,17 @@ class StatistikViewModel: ObservableObject {
                     fixtureMap[match.fixture.id] = match
                     leagueForFixture[match.fixture.id] = leagueName
                 }
+            }
+        }
+
+        // Supplemental: Fehlende Bet-Fixtures direkt nachladen (Playoff-Rounds etc.)
+        // → gleicher Fix wie im Community-Leaderboard (fetchFixturesByIds)
+        let missingIds = Array(Set(allBets.map { $0.fixtureId }).subtracting(fixtureMap.keys))
+        if !missingIds.isEmpty {
+            let freshMatches = await api.fetchFixturesByIds(missingIds)
+            for match in freshMatches {
+                fixtureMap[match.fixture.id] = match
+                leagueForFixture[match.fixture.id] = match.league.name
             }
         }
 
@@ -345,6 +355,9 @@ struct StatistikView: View {
             .onChange(of: communityManager.communities) { _, communities in
                 guard !communities.isEmpty else { return }
                 Task { await viewModel.load(communities: communities) }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .leaderboardUpdated)) { _ in
+                Task { await viewModel.refresh(communities: communityManager.communities) }
             }
         }
     }

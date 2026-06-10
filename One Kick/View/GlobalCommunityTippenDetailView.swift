@@ -12,10 +12,6 @@ struct GlobalCommunityTippenDetailView: View {
     @EnvironmentObject var communityManager: CommunityManager
     @Environment(\.dismiss) var dismiss
 
-    private func community(for league: String) -> CommunityModel? {
-        communityManager.communities.first { $0.activeLeagues.contains(league) }
-    }
-
     var body: some View {
         NavigationStack {
             ZStack {
@@ -36,28 +32,13 @@ struct GlobalCommunityTippenDetailView: View {
                     ScrollView {
                         VStack(spacing: 10) {
                             ForEach(vm.selectedLeagues, id: \.self) { league in
-                                let comm = community(for: league)
-                                Group {
-                                    if let comm {
-                                        NavigationLink(destination: LeagueBettingView(
-                                            community: comm,
-                                            leagueID: LeagueMapper.getID(for: league),
-                                            leagueName: league,
-                                            maxMatchday: LeagueMapper.getMaxMatchday(for: league)
-                                        )) {
-                                            leagueRow(league: league, hasAccess: true)
-                                        }
-                                        .buttonStyle(.plain)
-                                    } else {
-                                        leagueRow(league: league, hasAccess: false)
-                                            .opacity(0.5)
-                                            .overlay(alignment: .trailing) {
-                                                Text("Keine Community")
-                                                    .font(.system(size: 9)).foregroundColor(.gray)
-                                                    .padding(.trailing, 36)
-                                            }
-                                    }
+                                NavigationLink(destination: GlobalLeagueDetailView(
+                                    leagueName: league,
+                                    globalVM: vm
+                                )) {
+                                    leagueRow(league: league, hasAccess: true)
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding(.horizontal, 16)

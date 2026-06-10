@@ -13,6 +13,9 @@ struct ContentView: View {
     @EnvironmentObject var lm: LanguageManager
     @Environment(\.scenePhase) private var scenePhase
 
+    @AppStorage("didAskNotificationPermission") private var didAskNotif = false
+    @State private var showNotifPrompt = false
+
     init() {
         // Design-Anpassung für die TabBar (schwarzer Hintergrund)
         let appearance = UITabBarAppearance()
@@ -20,14 +23,17 @@ struct ContentView: View {
         appearance.backgroundColor = UIColor(named: "OneKickBlack") ?? UIColor.black
         
         let itemAppearance = UITabBarItemAppearance()
-        
+
+        // Tab-Farbe exakt #d8ff00 (nur die Tab-Leiste, global bleibt oneKickNeon unverändert)
+        let neon = UIColor(red: 216/255.0, green: 255/255.0, blue: 0/255.0, alpha: 1.0)
+
         // Inaktive Icons (Grau)
         itemAppearance.normal.iconColor = UIColor.gray
         itemAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.gray]
-        
+
         // Aktive Icons (Neon)
-        itemAppearance.selected.iconColor = UIColor(named: "OneKickNeon") ?? UIColor.green
-        itemAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(named: "OneKickNeon") ?? UIColor.green]
+        itemAppearance.selected.iconColor = neon
+        itemAppearance.selected.titleTextAttributes = [.foregroundColor: neon]
         
         appearance.stackedLayoutAppearance = itemAppearance
         UITabBar.appearance().standardAppearance = appearance
@@ -68,11 +74,23 @@ struct ContentView: View {
                 }
                 .tag(4)
         }
-        .tint(.oneKickNeon)
+        .tint(Color(red: 216/255.0, green: 255/255.0, blue: 0/255.0))
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 manager.appBecameActive = .now
             }
+        }
+        .task {
+            guard !didAskNotif else { return }
+            let status = await NotificationManager.shared.authorizationStatus()
+            if status == .notDetermined {
+                showNotifPrompt = true
+            } else {
+                didAskNotif = true
+            }
+        }
+        .sheet(isPresented: $showNotifPrompt) {
+            NotificationPermissionPrompt(onFinish: { didAskNotif = true })
         }
         .sheet(isPresented: Binding(
             get: { manager.pendingJoinCode != nil },

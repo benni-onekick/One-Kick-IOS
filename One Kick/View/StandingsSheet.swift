@@ -32,6 +32,7 @@ struct StandingDisplayEntry: Identifiable {
 struct StandingsSheet: View {
     let leagueID: Int
     let leagueName: String
+    var embedded: Bool = false
 
     @Environment(\.dismiss) var dismiss
     @State private var displayEntries: [StandingDisplayEntry] = []
@@ -41,7 +42,37 @@ struct StandingsSheet: View {
     private let service = APIFootballService()
 
     var body: some View {
-        NavigationStack {
+        Group {
+            if embedded {
+                content
+            } else {
+                NavigationStack {
+                    content
+                        .navigationTitle("\(leagueName) – Tabelle")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Schließen") { dismiss() }.foregroundColor(.oneKickNeon)
+                            }
+                        }
+                }
+            }
+        }
+        .task {
+            async let standingsTask = service.fetchStandings(for: leagueID)
+            async let matchesTask   = service.fetchCurrentAndUpcomingMatches(for: leagueID)
+            let (rawStandings, allMatches) = await (standingsTask, matchesTask)
+
+            let liveStatuses: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
+            let live = allMatches.filter { liveStatuses.contains($0.fixture.status.short) }
+            hasLive = !live.isEmpty
+            displayEntries = buildDisplayEntries(standings: rawStandings, liveMatches: live)
+            isLoading = false
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
             ZStack {
                 Color.oneKickBlack.ignoresSafeArea()
 
@@ -113,26 +144,6 @@ struct StandingsSheet: View {
                     }
                 }
             }
-            .navigationTitle("\(leagueName) – Tabelle")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Schließen") { dismiss() }
-                        .foregroundColor(.oneKickNeon)
-                }
-            }
-        }
-        .task {
-            async let standingsTask = service.fetchStandings(for: leagueID)
-            async let matchesTask   = service.fetchCurrentAndUpcomingMatches(for: leagueID)
-            let (rawStandings, allMatches) = await (standingsTask, matchesTask)
-
-            let liveStatuses: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
-            let live = allMatches.filter { liveStatuses.contains($0.fixture.status.short) }
-            hasLive = !live.isEmpty
-            displayEntries = buildDisplayEntries(standings: rawStandings, liveMatches: live)
-            isLoading = false
-        }
     }
 
     // MARK: - Live-Anpassung
@@ -241,7 +252,7 @@ struct StandingRowView: View {
                 .foregroundColor(.gray)
                 .frame(width: 28, alignment: .center)
 
-            Text(displayEntry.entry.team.name)
+            Text(teamNameWithFlag(displayEntry.entry.team.name))
                 .font(.system(size: 13))
                 .foregroundColor(.white)
                 .lineLimit(1)
@@ -289,6 +300,7 @@ struct StandingRowView: View {
 struct GroupStandingsSheet: View {
     let leagueID: Int
     let leagueName: String
+    var embedded: Bool = false
 
     @Environment(\.dismiss) var dismiss
     @State private var groups: [[StandingEntry]] = []
@@ -312,7 +324,30 @@ struct GroupStandingsSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        Group {
+            if embedded {
+                content
+            } else {
+                NavigationStack {
+                    content
+                        .navigationTitle("\(leagueName) – Gruppen")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Schließen") { dismiss() }.foregroundColor(.oneKickNeon)
+                            }
+                        }
+                }
+            }
+        }
+        .task {
+            groups = await service.fetchGroupStandings(for: leagueID)
+            isLoading = false
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
             ZStack {
                 Color.oneKickBlack.ignoresSafeArea()
 
@@ -386,18 +421,5 @@ struct GroupStandingsSheet: View {
                     }
                 }
             }
-            .navigationTitle("\(leagueName) – Gruppen")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Schließen") { dismiss() }
-                        .foregroundColor(.oneKickNeon)
-                }
-            }
-        }
-        .task {
-            groups = await service.fetchGroupStandings(for: leagueID)
-            isLoading = false
-        }
     }
 }

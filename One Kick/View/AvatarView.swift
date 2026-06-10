@@ -34,3 +34,36 @@ struct AvatarView: View {
         .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
     }
 }
+
+// MARK: - Vollbild-Ansicht eines Profilbilds
+
+struct FullScreenImageView: View {
+    let photoBase64: String
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let data = Data(base64Encoded: photoBase64),
+               let img = UIImage(data: data) {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFit()
+                    .padding()
+            }
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    .padding()
+                }
+                Spacer()
+            }
+        }
+        .onTapGesture { dismiss() }
+    }
+}

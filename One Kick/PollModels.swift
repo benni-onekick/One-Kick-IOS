@@ -13,6 +13,7 @@ struct CommunityPoll: Identifiable {
     var status: String           // "active" | "closed"
     var votes: [String: [Int]]  // userId → [optionIndices]
     var appliedAt: Timestamp?
+    var endsAt: Timestamp? = nil // nur globale Umfragen: aktiv bis zu diesem Zeitpunkt
 
     enum PollType: String {
         case free, leagues, bonus, matches
@@ -28,6 +29,13 @@ struct CommunityPoll: Identifiable {
 
     var totalVotes: Int { votes.count }
     var isClosed: Bool { status == "closed" }
+
+    /// Globale Umfrage: läuft noch (nicht geschlossen und Ablaufzeitpunkt nicht erreicht).
+    var isLive: Bool {
+        guard !isClosed else { return false }
+        if let end = endsAt?.dateValue() { return end > Date() }
+        return true
+    }
 
     func votesForOption(_ index: Int) -> Int {
         votes.values.filter { $0.contains(index) }.count
@@ -63,7 +71,8 @@ struct CommunityPoll: Identifiable {
             createdAt: data["createdAt"] as? Timestamp,
             status: data["status"] as? String ?? "active",
             votes: rawVotes,
-            appliedAt: data["appliedAt"] as? Timestamp
+            appliedAt: data["appliedAt"] as? Timestamp,
+            endsAt: data["endsAt"] as? Timestamp
         )
     }
 }

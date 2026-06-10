@@ -41,7 +41,7 @@ struct ApiMatchRow: View {
         guard let date = iso.date(from: match.fixture.date) else { return "" }
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "de_DE")
-        fmt.dateFormat = "EE HH:mm"   // EE gibt in de_DE bereits "Fr." zurück
+        fmt.dateFormat = "d.M. EE HH:mm"   // z.B. "11.6. Do 21:00"
         return fmt.string(from: date)
     }
 

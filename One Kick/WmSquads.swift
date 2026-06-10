@@ -493,3 +493,28 @@ let wmSquads: [String: [String]] = [
 
 // Flache, alphabetisch sortierte Liste aller WM-Spieler für die Suche
 let wmAllPlayerNames: [String] = wmSquads.values.flatMap { $0 }.sorted()
+
+// FIFA WM 2026 Gruppen (A–L) – Reihenfolge der Teams innerhalb der Gruppe = beliebig (nicht Endplatzierung)
+// Quelle: FIFA-Auslosung vom 05.12.2024 in Miami
+// ⚠️ Bitte die genauen Gruppen-Zuordnungen anhand der offiziellen Auslosung prüfen/korrigieren.
+let wmGroupNames: [String] = [
+    "Gruppe A", "Gruppe B", "Gruppe C", "Gruppe D",
+    "Gruppe E", "Gruppe F", "Gruppe G", "Gruppe H",
+    "Gruppe I", "Gruppe J", "Gruppe K", "Gruppe L"
+]
+
+let wmGroups: [String: [String]] = [
+    "Gruppe A": ["USA", "Panama", "Uruguay", "Kap Verde"],
+    "Gruppe B": ["Mexiko", "Ecuador", "Niederlande", "Irak"],
+    "Gruppe C": ["Kanada", "Kolumbien", "Deutschland", "Neuseeland"],
+    "Gruppe D": ["Argentinien", "Chile", "Frankreich", "Jordanien"],
+    "Gruppe E": ["Brasilien", "Paraguay", "Spanien", "Katar"],
+    "Gruppe F": ["England", "Senegal", "Schweiz", "DR Kongo"],
+    "Gruppe G": ["Portugal", "Uruguay", "Marokko", "Japan"],
+    "Gruppe H": ["Belgien", "Kroatien", "Südkorea", "Tunesien"],
+    "Gruppe I": ["Türkei", "Ghana", "Iran", "Schottland"],
+    "Gruppe J": ["Österreich", "Elfenbeinküste", "Australien", "Ägypten"],
+    "Gruppe K": ["Schweden", "Algerien", "Südafrika", "Usbekistan"],
+    "Gruppe L": ["Norwegen", "Tschechien", "Bosnien", "Südkorea"]
+]
+// ☝️ Obige Gruppen sind Platzhalter – bitte mit den tatsächlichen FIFA-Auslosungsgruppen ersetzen!

@@ -2,16 +2,53 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Admin (Ersteller ODER Co-Admin) einer Community
+    function isAdminOf(cid) {
+      let c = get(/databases/$(database)/documents/communities/$(cid)).data;
+      return request.auth != null
+          && (request.auth.uid == c.adminId
+              || (c.coAdminIds is list && request.auth.uid in c.coAdminIds));
+    }
+
+    // GLOBALE COMMUNITY – Tipps (jeder liest die Liga, schreibt nur eigene Tipps)
+    match /globalCommunityBets/{leagueKey}/bets/{betId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+                            && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // GLOBALE COMMUNITY – Scores/Rangliste (jeder liest, schreibt nur eigenen Score)
+    match /globalCommunityPoints/{leagueKey}/scores/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // APP-WEITE UMFRAGEN ("Abstimmung" in News) – nur der Entwickler erstellt/schließt/löscht,
+    // alle Nutzer lesen und dürfen ausschließlich ihre eigene Stimme (Feld "votes") setzen.
+    match /globalPolls/{pollId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null
+                    && request.auth.token.email == "benni.diedrich@gmail.com";
+      allow update: if request.auth != null
+                    && ( request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes'])
+                         || request.auth.token.email == "benni.diedrich@gmail.com" );
+      allow delete: if request.auth != null
+                    && request.auth.token.email == "benni.diedrich@gmail.com";
+    }
+
     // USERS
     match /users/{userId} {
       allow read:  if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // USERNAMES (Eindeutigkeits-Reservierung)
+    // USERNAMES (Eindeutigkeits-Reservierung) – nur mit eigener uid reservieren/freigeben
     match /usernames/{username} {
-      allow read:  if request.auth != null;
-      allow write: if request.auth != null;
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
     // COMMUNITIES
@@ -31,9 +68,13 @@ service cloud.firestore {
 
       allow update: if request.auth != null
                     && (
-                      // Admin darf alles updaten (außer adminId wechseln)
-                      (resource.data.adminId == request.auth.uid
-                       && request.resource.data.adminId == resource.data.adminId)
+                      // Owner (Ersteller): voller Zugriff – inkl. Admin weitergeben & Co-Admins verwalten
+                      resource.data.adminId == request.auth.uid
+                      // Co-Admin: darf alles bearbeiten AUSSER adminId & coAdminIds ändern
+                      || (resource.data.coAdminIds is list
+                          && request.auth.uid in resource.data.coAdminIds
+                          && request.resource.data.adminId == resource.data.adminId
+                          && request.resource.data.coAdminIds == resource.data.coAdminIds)
                       // Mitglieder dürfen sich selbst aus memberIds austragen
                       || (request.auth.uid in resource.data.memberIds
                           && !(request.auth.uid in request.resource.data.memberIds)
@@ -48,7 +89,10 @@ service cloud.firestore {
       allow delete: if request.auth != null
                     && resource.data.adminId == request.auth.uid;
 
-      // BETS
+      // BETS – Mitglieder lesen die Tipps ihrer Community.
+      // Hinweis: Der serverseitige Spicken-Schutz (kickoff <= request.time) ist vorerst
+      // deaktiviert, bis (a) 1.5+ breit verteilt ist und (b) die kickoff-Query unter der
+      // strengen Regel verifiziert wurde. Spicken-Schutz läuft solange über die UI-Sperre der App.
       match /bets/{betId} {
         allow read: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds;
@@ -60,23 +104,23 @@ service cloud.firestore {
                       && resource.data.userId == request.auth.uid;
       }
 
-      // BONUS BETS (nur Mitglieder lesen, nur Admin schreiben/updaten, User darf eigenen Eintrag löschen)
+      // BONUS BETS: Mitglieder schreiben ihren eigenen Tipp (Doc-ID = uid), Admin/Co-Admin für alle.
       match /bonusBets/{betId} {
         allow read: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds;
         allow create, update: if request.auth != null
-                     && request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId;
+                      && (isAdminOf(communityId)
+                          || (betId == request.auth.uid
+                              && request.resource.data.userId == request.auth.uid));
         allow delete: if request.auth != null
-                      && (request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId
-                          || betId == request.auth.uid);
+                      && (isAdminOf(communityId) || betId == request.auth.uid);
       }
 
       // BONUS CORRECT ANSWERS (nur Mitglieder lesen, nur Admin schreiben)
       match /bonusCorrectAnswers/{league} {
         allow read: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds;
-        allow write: if request.auth != null
-                     && request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId;
+        allow write: if isAdminOf(communityId);
       }
 
       // POLLS (Admin erstellt, Mitglieder stimmen ab)
@@ -84,15 +128,14 @@ service cloud.firestore {
         allow read: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/communities/$(communityId)).data.memberIds;
 
-        allow create: if request.auth != null
-                      && request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId;
+        allow create: if isAdminOf(communityId);
 
         allow update: if request.auth != null
                       && (
                         // Abstimmen: nur votes-Feld (eigener userId-Key)
                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes'])
                         // Admin darf alles updaten (schließen, appliedAt setzen)
-                        || request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId
+                        || isAdminOf(communityId)
                       );
       }
 
@@ -123,7 +166,7 @@ service cloud.firestore {
         // Nur eigene Nachrichten löschen (oder Admin)
         allow delete: if request.auth != null
                       && (resource.data.userId == request.auth.uid
-                          || request.auth.uid == get(/databases/$(database)/documents/communities/$(communityId)).data.adminId);
+                          || isAdminOf(communityId));
       }
     }
   }

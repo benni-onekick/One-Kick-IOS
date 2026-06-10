@@ -13,7 +13,7 @@ import FirebaseAuth
 class BetManager {
     private let db = Firestore.firestore()
 
-    func saveBet(fixtureId: Int, communityId: String, homeGoals: Int, awayGoals: Int) async throws {
+    func saveBet(fixtureId: Int, communityId: String, homeGoals: Int, awayGoals: Int, kickoff: Date) async throws {
         guard let userId = Auth.auth().currentUser?.uid else { return }
 
         let email = Auth.auth().currentUser?.email ?? ""
@@ -24,6 +24,7 @@ class BetManager {
             "communityId": communityId,
             "homeGoals":   homeGoals,
             "awayGoals":   awayGoals,
+            "kickoff":     Timestamp(date: kickoff),
             "createdAt":   Timestamp()
         ]
 
@@ -36,11 +37,11 @@ class BetManager {
         print("✅ Tipp gespeichert: Fixture \(fixtureId) in Community \(communityId)")
     }
 
-    func saveBetToMultipleCommunities(fixtureId: Int, communityIds: [String], homeGoals: Int, awayGoals: Int) async {
+    func saveBetToMultipleCommunities(fixtureId: Int, communityIds: [String], homeGoals: Int, awayGoals: Int, kickoff: Date) async {
         await withTaskGroup(of: Void.self) { group in
             for cid in communityIds {
                 group.addTask {
-                    try? await self.saveBet(fixtureId: fixtureId, communityId: cid, homeGoals: homeGoals, awayGoals: awayGoals)
+                    try? await self.saveBet(fixtureId: fixtureId, communityId: cid, homeGoals: homeGoals, awayGoals: awayGoals, kickoff: kickoff)
                 }
             }
         }

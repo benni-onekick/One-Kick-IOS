@@ -17,6 +17,7 @@ struct UserBonusEntry: Identifiable {
 
 // Alle möglichen Bonus-Kategorien (modul-weit, auch für CommunitySettingsView)
 let allBonusCategories: [String] = [
+    "Sieger tippen",
     "Finalisten tippen",
     "Halbfinalisten tippen",
     "Torschützenkönig",
@@ -26,7 +27,10 @@ let allBonusCategories: [String] = [
     "Endtabelle",
     "Meiste Aluminium-Treffer",
     "Meiste Karten",
-    "Meiste Zu-Null-Spiele"
+    "Meiste Zu-Null-Spiele",
+    "WM Gruppe A", "WM Gruppe B", "WM Gruppe C", "WM Gruppe D",
+    "WM Gruppe E", "WM Gruppe F", "WM Gruppe G", "WM Gruppe H",
+    "WM Gruppe I", "WM Gruppe J", "WM Gruppe K", "WM Gruppe L"
 ]
 
 let koLeagueNames: Set<String> = [
@@ -37,14 +41,37 @@ let koLeagueNames: Set<String> = [
     "Frauen Champions League", "Frauen WM", "Frauen EM"
 ]
 
+/// Konsolidierte Anzeige-Kategorie für die 12 WM-Gruppen im Admin-Editor.
+let groupStageCategory = "Gruppenphase Tabelle"
+/// Die 12 internen Gruppen-Schlüssel ("WM Gruppe A" … "WM Gruppe L").
+let wmGroupCategories: [String] = wmGroupNames.map { "WM \($0)" }
+
+/// Alle WÄHLBAREN Kategorien für eine Liga (Admin-Editor, unabhängig vom aktiven Set).
+/// Liga-Typ entscheidet: Pokal/KO → Finalisten/Halbfinalisten; Liga → Endtabelle;
+/// WM → zusätzlich "Gruppenphase Tabelle" (eine Zeile statt 12 Einzel-Gruppen).
+func allBonusCategoriesForLeague(_ leagueName: String) -> [String] {
+    let isKO = koLeagueNames.contains(leagueName)
+    var cats: [String] = isKO
+        ? ["Sieger tippen", "Finalisten tippen", "Halbfinalisten tippen", "Torschützenkönig",
+           "Meiste Vorlagen", "Meiste Tore (Team)", "Meiste Gegentore"]
+        : ["Torschützenkönig", "Meiste Vorlagen", "Meiste Tore (Team)",
+           "Meiste Gegentore", "Endtabelle"]
+    cats += ["Meiste Aluminium-Treffer", "Meiste Karten", "Meiste Zu-Null-Spiele"]
+    if leagueName == "Weltmeisterschaft" { cats += [groupStageCategory] }
+    return cats
+}
+
 /// Gibt die aktiven Bonus-Kategorien für eine Liga zurück (gefiltert nach activeCategorySet).
 func bonusCategoriesForLeague(_ leagueName: String, activeCategorySet: Set<String>) -> [String] {
     let isKO = koLeagueNames.contains(leagueName)
     var cats: [String] = isKO
-        ? ["Finalisten tippen", "Halbfinalisten tippen", "Torschützenkönig", "Meiste Vorlagen",
+        ? ["Sieger tippen", "Finalisten tippen", "Halbfinalisten tippen", "Torschützenkönig", "Meiste Vorlagen",
            "Meiste Tore (Team)", "Meiste Gegentore"]
         : ["Torschützenkönig", "Meiste Vorlagen", "Meiste Tore (Team)", "Meiste Gegentore", "Endtabelle"]
     cats += ["Meiste Aluminium-Treffer", "Meiste Karten", "Meiste Zu-Null-Spiele"]
+    if leagueName == "Weltmeisterschaft" {
+        cats += wmGroupNames.map { "WM \($0)" }
+    }
     return cats.filter { activeCategorySet.contains($0) }
 }
 
@@ -60,6 +87,7 @@ struct BonusLeagueCard: View {
     private var allCategoriesForLeague: [(icon: String, title: String, color: Color)] {
         var result: [(String, String, Color)] = []
         if isKO {
+            result.append(("crown.fill",            "Sieger tippen",          .yellow))
             result.append(("trophy.fill",           "Finalisten tippen",      .yellow))
             result.append(("medal.fill",            "Halbfinalisten tippen",  Color(white: 0.75)))
             result.append(("person.fill",           "Torschützenkönig",       .oneKickNeon))
@@ -76,6 +104,11 @@ struct BonusLeagueCard: View {
         result.append(("circle.fill",               "Meiste Aluminium-Treffer", .gray))
         result.append(("rectangle.badge.minus",     "Meiste Karten",            Color(red: 0.9, green: 0.3, blue: 0.2)))
         result.append(("shield.lefthalf.filled",    "Meiste Zu-Null-Spiele",    .teal))
+        if leagueName == "Weltmeisterschaft" {
+            for groupName in wmGroupNames {
+                result.append(("square.grid.2x2.fill", "WM \(groupName)", .orange))
+            }
+        }
         return result
     }
 
@@ -113,6 +146,7 @@ struct BonusLeagueCard: View {
                         .font(.caption.bold()).foregroundColor(.gray)
                 }
                 .padding(16)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -198,6 +232,7 @@ struct BonusAnswerCard: View {
                         .font(.caption.bold()).foregroundColor(.gray)
                 }
                 .padding(16)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 

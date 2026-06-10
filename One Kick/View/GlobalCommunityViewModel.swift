@@ -90,6 +90,66 @@ class GlobalCommunityViewModel: ObservableObject {
         }
     }
 
+    private let api = APIFootballService()
+    private let globalBets = GlobalBetManager()
+
+    /// Lädt die eigenen globalen Tipps einer Liga (für die Spieltage-Ansicht).
+    func loadGlobalBets(for league: String) async -> [Int: (home: Int, away: Int)] {
+        await globalBets.loadGlobalBets(league: league)
+    }
+
+    /// Berechnet den eigenen Score einer globalen Liga aus den globalen Tipps + Ergebnissen
+    /// und schreibt ihn nach globalCommunityPoints/{leagueKey}/scores/{uid}.
+    func recomputeScore(for league: String) async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        let bets = await globalBets.loadGlobalBets(league: league)
+        guard !bets.isEmpty else { return }
+
+        let lid = LeagueMapper.getID(for: league)
+        let fixtures = await api.fetchAllSeasonFixtures(for: lid)
+        let finished: Set<String> = ["FT", "AET", "PEN", "AWD", "WO"]
+        var results: [Int: (home: Int, away: Int)] = [:]
+        for m in fixtures where finished.contains(m.fixture.status.short) {
+            results[m.fixture.id] = (m.goals.home ?? 0, m.goals.away ?? 0)
+        }
+
+        var total = 0
+        for (fid, tip) in bets {
+            guard let res = results[fid] else { continue }
+            total += Self.calcPoints(tip: tip, result: res)
+        }
+
+        // Anzeigename/Bild für die Rangliste
+        let userDoc = try? await db.collection("users").document(uid).getDocument()
+        var data: [String: Any] = [
+            "points":    total,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        data["displayName"] = userDoc?.data()?["displayName"] as? String
+            ?? Auth.auth().currentUser?.email?.components(separatedBy: "@").first
+            ?? String(uid.prefix(8))
+        if let photo = userDoc?.data()?["photoBase64"] as? String { data["photoBase64"] = photo }
+
+        try? await db.collection("globalCommunityPoints")
+            .document(league.toFirestoreKey())
+            .collection("scores")
+            .document(uid)
+            .setData(data, merge: true)
+    }
+
+    /// Standard-Punkte: 1 Heim + 1 Auswärts + 2 Tordifferenz + 3 Tendenz.
+    static func calcPoints(tip: (home: Int, away: Int), result: (home: Int, away: Int)) -> Int {
+        var p = 0
+        if tip.home == result.home { p += 1 }
+        if tip.away == result.away { p += 1 }
+        let td = tip.home - tip.away, rd = result.home - result.away
+        if td == rd { p += 2 }
+        let tr = td > 0 ? 1 : (td < 0 ? -1 : 0)
+        let rr = rd > 0 ? 1 : (rd < 0 ? -1 : 0)
+        if tr == rr { p += 3 }
+        return p
+    }
+
     func saveLeagues(_ leagues: [String]) async {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         let current = Set(selectedLeagues)

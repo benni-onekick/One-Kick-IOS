@@ -1,0 +1,223 @@
+/* Tab */
+"tab.start" = "Home";
+"tab.tippen" = "I miei pronostici";
+"tab.news" = "News";
+"tab.statistik" = "Statistiche";
+"tab.community" = "Community";
+
+/* Azioni */
+"action.save" = "Salva";
+"action.cancel" = "Annulla";
+"action.done" = "Fine";
+"action.close" = "Chiudi";
+"action.confirm" = "Conferma";
+"action.back" = "Indietro";
+"action.join" = "Partecipa";
+"action.add" = "Aggiungi";
+"action.edit" = "Modifica";
+"action.delete" = "Elimina";
+"action.leave" = "Esci";
+"action.send" = "Invia";
+"action.refresh" = "Aggiorna";
+"action.start" = "Inizia";
+"action.report" = "Segnala";
+"action.block" = "Blocca";
+
+/* Profilo */
+"profile.title" = "Profilo e impostazioni";
+"profile.section.profile" = "Il mio profilo";
+"profile.section.tipping" = "Pronostici";
+"profile.section.security" = "Sicurezza";
+"profile.section.legal" = "Note legali";
+"profile.section.badges" = "I miei badge";
+"profile.language" = "Lingua";
+"profile.changeName" = "Cambia nome visualizzato";
+"profile.favorites" = "Leghe e squadre preferite";
+"profile.resetPassword" = "Reimposta password";
+"profile.logout" = "Esci";
+"profile.deleteAccount" = "Elimina account";
+"profile.crossCommunity" = "Pronostici condivisi";
+"profile.showOdds" = "Mostra quote";
+"profile.notifications" = "Promemoria pronostici";
+"profile.impressum" = "Note legali";
+"profile.privacy" = "Privacy";
+
+/* Home */
+"home.welcome" = "Benvenuto su One Kick";
+"home.welcomeBack" = "Bentornato";
+"home.openTips" = "I miei pronostici aperti";
+"home.topMatches" = "Partite top";
+"home.allTipped" = "Hai pronosticato tutte le partite.";
+"home.noTopMatches" = "Nessuna partita top disponibile.";
+"home.tipNow" = "Pronostica ora";
+
+/* Community */
+"community.overview" = "La tua panoramica";
+"community.my" = "Le mie community";
+"community.showAll" = "Mostra tutte";
+"community.global" = "Community globale";
+"community.joinCode" = "Partecipa con codice";
+"community.myRankings" = "Le mie classifiche";
+"community.loading" = "Caricamento…";
+"community.create" = "Crea lega";
+"community.noLeague" = "Nessuna lega";
+"community.inviteCode" = "Il tuo codice d'invito";
+
+/* Pronostici */
+"tipping.matchday" = "Giornata";
+"tipping.table" = "Classifica";
+"tipping.lineup" = "Formazione";
+"tipping.groups" = "Gironi";
+"tipping.place" = "Pronostica";
+"tipping.edit" = "Modifica pronostico";
+"tipping.liveInfo" = "Info live";
+"tipping.rounds" = "Turni";
+"tipping.infoOnly" = "Solo a scopo informativo · nessun denaro reale";
+
+/* Login */
+"login.signIn" = "Accedi";
+"login.register" = "Registrati";
+"login.email" = "Indirizzo e-mail";
+"login.password" = "Password";
+"login.displayName" = "Nome visualizzato";
+"login.createAccount" = "Crea account";
+"login.loginButton" = "Accedi";
+"login.forgotPassword" = "Password dimenticata?";
+"login.appleSignIn" = "Accedi con Apple";
+"login.googleSignIn" = "Accedi con Google";
+"login.or" = "oppure";
+
+/* Generale */
+"general.loading" = "Caricamento…";
+"general.noData" = "Nessun dato";
+"general.error" = "Errore";
+"general.yes" = "Sì";
+"general.no" = "No";
+"general.ok" = "OK";
+"general.points" = "Pti";
+"general.pts" = "Pti";
+"general.rank" = "Posizione";
+"general.of" = "di";
+"general.notAvailable" = "Non disponibile";
+"general.loadingLeagues" = "Caricamento leghe…";
+
+/* Community (aggiunte) */
+"community.of" = "di";
+"community.tipper" = "Pronosticatori";
+"community.entered" = "Iscritto!";
+"community.joined" = "Iscritto!";
+"community.enterCode" = "Inserisci il codice d'invito della lega.";
+"community.noLeagueDesc" = "Crea una lega o uniscitene a una.";
+
+/* Profilo (aggiunte) */
+"profile.badges.noneSelected" = "Nessun badge selezionato";
+"profile.badges.edit" = "Modifica badge";
+"profile.badges.unlock" = "Sblocca badge";
+"profile.tapPhoto" = "Tocca la foto per cambiarla";
+"profile.passwordReset.title" = "Reimposta password";
+"profile.passwordReset.msg" = "Ti invieremo un link per reimpostare la password.";
+"profile.deleteAccount.title" = "Eliminare davvero l'account?";
+"profile.deleteAccount.msg" = "Tutti i tuoi pronostici e dati verranno eliminati definitivamente.";
+"profile.passwordReset.sent" = "✓ E-mail inviata";
+
+/* Classifica punti */
+"punkteview.overall" = "Totale";
+"punkteview.leagues" = "Leghe";
+"punkteview.noTips" = "Ancora nessun pronostico";
+"punkteview.currentLeader" = "Leader attuale";
+"punkteview.weeklyWinner" = "Vincitore della settimana";
+"punkteview.loadingPoints" = "Caricamento punti stagionali…";
+"punkteview.noLeaderboard" = "La classifica appare qui non appena vengono inseriti i pronostici.";
+"punkteview.loadingWeek" = "Caricamento settimana…";
+"punkteview.noMatches" = "Nessuna partita questa settimana";
+"punkteview.noMatchesDesc" = "Questa settimana non ci sono partite per queste leghe.";
+"punkteview.points" = "Punti";
+
+/* Home (aggiunte) */
+"home.joinLeague" = "Unisciti a una lega o crea la tua.";
+"home.tippers" = "Pronosticatori";
+
+/* Statistiche */
+"stats.totalPoints" = "Punti totali";
+"stats.perGame" = "Ø per partita";
+"stats.evaluated" = "Valutati";
+"stats.precision" = "PRECISIONE PRONOSTICI";
+"stats.correctTrend" = "Esito corretto";
+"stats.draw" = "Pareggio";
+"stats.exactScore" = "Risultato esatto";
+"stats.goalRatio" = "Differenza reti";
+"stats.homeGoals" = "Gol in casa corretti";
+"stats.awayGoals" = "Gol in trasferta";
+"stats.currentStreak" = "Serie attuale";
+"stats.bestStreak" = "Miglior serie";
+"stats.top5Leagues" = "TOP 5 LEGHE";
+"stats.maxPts" = "max 7 pti";
+"stats.tipsEvaluated" = "pronostici valutati";
+"stats.consecutivePts" = "consecutivi con punti";
+"stats.longestStreak" = "serie più lunga in totale";
+
+/* News */
+"news.onlyFavorites" = "Solo preferiti";
+"news.allLeagues" = "Tutte le leghe attive";
+"news.transfers" = "Trasferimenti";
+
+/* Selezione badge */
+"badge.pickTitle" = "Seleziona badge";
+"badge.pickHint" = "Scegli fino a 3 badge per il tuo profilo.";
+"badge.unlocked" = "Sbloccato";
+"badge.toEarn" = "Ancora da conquistare";
+"badge.noneYet" = "Nessun badge ancora sbloccato";
+
+/* Lega */
+"league.matchdayHeader" = "GIORNATA";
+
+/* Note legali */
+"legal.impressum.title" = "Note legali";
+"legal.impressum.section1" = "Informazioni ai sensi del § 5 TMG";
+"legal.impressum.section2" = "Contatto";
+"legal.impressum.section3" = "Avviso";
+"legal.impressum.note" = "Questa app è gestita come progetto privato e non commerciale. Non esiste alcuna attività commerciale registrata.";
+"legal.impressum.section4" = "Esclusione di responsabilità";
+"legal.impressum.liability" = "I contenuti di questa app sono stati creati con la massima cura. Trattandosi di una versione di prova privata, non si fornisce alcuna garanzia sulla correttezza, completezza o attualità delle informazioni mostrate.";
+
+/* Privacy */
+"legal.privacy.title" = "Privacy";
+"legal.privacy.s1.title" = "Panoramica";
+"legal.privacy.s1.text" = "Questa app è un progetto privato e non commerciale in fase di test. L'informativa sulla privacy spiega quali dati vengono trattati e dove.";
+"legal.privacy.s2.title" = "Titolare del trattamento (art. 4 n. 7 GDPR)";
+"legal.privacy.s3.title" = "Firebase Authentication";
+"legal.privacy.s3.text" = "Per l'accesso viene utilizzato Firebase Authentication di Google LLC. Il tuo indirizzo e-mail viene memorizzato sui server di Google (Firebase). Google LLC ha sede negli USA; il trasferimento dei dati avviene sulla base delle clausole contrattuali standard dell'UE.";
+"legal.privacy.s3.link" = "Informativa privacy Firebase: firebase.google.com/support/privacy";
+"legal.privacy.s4.title" = "Firebase Firestore (database)";
+"legal.privacy.s4.intro" = "I seguenti dati vengono memorizzati in Firebase Firestore (Google LLC) per fornire le funzioni dell'app:";
+"legal.privacy.s4.b1" = "• Dati dei pronostici, nomi utente, appartenenze alle community, risultati e pronostici bonus";
+"legal.privacy.s4.b2" = "• Messaggi in chat all'interno delle community (testo, ID mittente, timestamp)";
+"legal.privacy.s4.b3" = "• Community globale: leghe selezionate, punteggio e posizione";
+"legal.privacy.s4.b4" = "• Badge / risultati: achievement sbloccati e mostrati";
+"legal.privacy.s4.b5" = "• Data di iscrizione: timestamp della creazione dell'account";
+"legal.privacy.s4.legal" = "Base giuridica: art. 6 par. 1 lett. b GDPR (esecuzione del contratto / misure precontrattuali).";
+"legal.privacy.s5.title" = "Accesso con Apple e Google";
+"legal.privacy.s5.text1" = "L'app offre la possibilità di accedere con l'Apple ID o un account Google. I dati di autenticazione (nome, e-mail) vengono trasmessi a Firebase Authentication. Nell'app non vengono memorizzate password.";
+"legal.privacy.s5.text2" = "Con l'accesso tramite Apple vengono trattati solo i dati che hai autorizzato. Apple li trasmette una sola volta al primo accesso.";
+"legal.privacy.s5.link1" = "Privacy Apple: apple.com/legal/privacy";
+"legal.privacy.s5.link2" = "Privacy Google: policies.google.com/privacy";
+"legal.privacy.s6.title" = "API-Football (dati delle partite)";
+"legal.privacy.s6.text" = "Per calendari, risultati e statistiche vengono inviate richieste all'interfaccia API-Football. Non vengono trasmessi dati personali.";
+"legal.privacy.s7.title" = "Memoria locale (sul tuo dispositivo)";
+"legal.privacy.s7.text" = "Impostazioni come leghe preferite e opzioni di visualizzazione vengono salvate esclusivamente in locale tramite UserDefaults sul tuo dispositivo e non vengono trasmesse a server esterni.";
+"legal.privacy.s8.title" = "Apple App Store / segnalazioni di crash";
+"legal.privacy.s8.text" = "L'app viene distribuita tramite l'Apple App Store. Apple può raccogliere dati anonimi su crash e utilizzo. Il trattamento è anonimo; non è possibile identificare i singoli utenti.";
+"legal.privacy.s9.title" = "I tuoi diritti (GDPR)";
+"legal.privacy.s9.text1" = "Hai diritto di accesso (art. 15), rettifica (art. 16), cancellazione (art. 17), limitazione del trattamento (art. 18) e portabilità dei dati (art. 20).";
+"legal.privacy.s9.text2" = "Per esercitare i tuoi diritti scrivi un'e-mail a: benni.diedrich@gmail.com";
+"legal.privacy.s10.title" = "Niente pubblicità, niente tracciamento";
+"legal.privacy.s10.text" = "Questa app non contiene pubblicità, né tracciamento di terze parti, né strumenti di analisi (ad es. Google Analytics).";
+"legal.privacy.stand" = "Aggiornato";
+"legal.privacy.date" = "Giugno 2026";
+
+/* Abstimmung / Polls */
+"news.polls" = "Sondaggio";
+"poll.submit" = "Vota";
+"poll.vote" = "voto";
+"poll.votes" = "voti";
+"poll.empty" = "Nessun sondaggio al momento";

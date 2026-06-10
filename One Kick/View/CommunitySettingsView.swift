@@ -16,7 +16,8 @@ struct CommunitySettingsView: View {
     @State private var groupName: String
     @State private var inviteCode: String
     @State private var selectedLeagues: Set<String>
-    @State private var selectedBonusCategories: Set<String>
+    @State private var selectedBonusCategories: Set<String>  // globaler Fallback (veraltet)
+    @State private var bonusCatsPerLeague: [String: Set<String>] = [:]  // neu: pro Liga
     @State private var showLeagueSelection = false
     @State private var showBonusFill = false
     @State private var showBonusResults = false
@@ -30,6 +31,18 @@ struct CommunitySettingsView: View {
     @State private var isLoadingTransfer = false
     @State private var pendingNewAdmin: (userId: String, displayName: String)?
     @State private var showTransferConfirm = false
+    @State private var lockedLeagues: Set<String> = []  // pro-Liga-Lock
+    @State private var showAddAdmin = false
+    @State private var coAdminNames: [String: String] = [:]   // uid → Anzeigename
+    @State private var showBonusManage = false
+    @State private var cropItem: CropItem? = nil
+    @State private var showDeleteConfirm = false
+
+    // Liest immer die aktuelle Community aus dem Manager – reagiert auf Firestore-Updates
+    // (community ist eine statische let-Kopie; liveCommunity spiegelt den Live-Stand wider)
+    private var liveCommunity: CommunityModel {
+        communityManager.communities.first(where: { $0.id == community.id }) ?? community
+    }
 
     init(community: CommunityModel) {
         self.community = community
@@ -37,11 +50,21 @@ struct CommunitySettingsView: View {
         _inviteCode = State(initialValue: community.inviteCode ?? "—")
         _selectedLeagues = State(initialValue: community.activeLeagues)
         _communityPhotoBase64 = State(initialValue: community.photoBase64)
-        // nil → alle Kategorien aktiv (= kompletter Satz)
+        // Globaler Fallback (für Speichern als Basis)
         _selectedBonusCategories = State(
             initialValue: community.activeBonusCategories.map { Set($0) }
                 ?? Set(allBonusCategories)
         )
+        // Pro-Liga: aus activeBonusCategoriesPerLeague oder globalem Fallback
+        var perLeague: [String: Set<String>] = [:]
+        for leagueName in community.activeLeagues {
+            if let existing = community.activeBonusCategoriesPerLeague?[leagueName], !existing.isEmpty {
+                perLeague[leagueName] = Set(existing)
+            } else {
+                perLeague[leagueName] = community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
+            }
+        }
+        _bonusCatsPerLeague = State(initialValue: perLeague)
     }
 
     var shareMessage: String {
@@ -55,7 +78,7 @@ struct CommunitySettingsView: View {
 
                 List {
                     // --- FOTO (nur Admin) ---
-                    if community.isCreatedByUser {
+                    if liveCommunity.isAdmin {
                         Section(header: sectionHeader("Community-Foto")) {
                             HStack {
                                 Spacer()
@@ -92,7 +115,12 @@ struct CommunitySettingsView: View {
                                     }
                                 }
                                 .onChange(of: selectedPhoto) { _, item in
-                                    Task { await processAndSaveCommunityPhoto(item) }
+                                    Task {
+                                        guard let item,
+                                              let data = try? await item.loadTransferable(type: Data.self),
+                                              let uiImage = UIImage(data: data) else { return }
+                                        await MainActor.run { cropItem = CropItem(image: uiImage) }
+                                    }
                                 }
                                 Spacer()
                             }
@@ -105,7 +133,7 @@ struct CommunitySettingsView: View {
                     Section(header: sectionHeader("Allgemein")) {
                         VStack(alignment: .leading, spacing: 5) {
                             Text("Name der Runde").font(.caption2).foregroundColor(.gray)
-                            if community.isCreatedByUser {
+                            if liveCommunity.isAdmin {
                                 TextField("Name", text: $groupName)
                                     .font(.headline).foregroundColor(.white)
                             } else {
@@ -116,9 +144,55 @@ struct CommunitySettingsView: View {
                         .listRowBackground(Color.oneKickDarkGray)
                     }
 
-                    // --- ADMIN WEITERGEBEN (nur Admin) ---
-                    if community.isCreatedByUser {
+                    // --- ADMIN-VERWALTUNG (nur Owner/Ersteller) ---
+                    if liveCommunity.isOwner {
                         Section(header: sectionHeader("Admin")) {
+                            // Admin hinzufügen (Co-Admin)
+                            Button(action: {
+                                HapticManager.instance.impact(style: .medium)
+                                showAddAdmin = true
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Admin hinzufügen")
+                                            .font(.headline).foregroundColor(.white)
+                                        Text("Mitglied zusätzlich zum Admin machen")
+                                            .font(.caption).foregroundColor(.gray)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "person.badge.plus")
+                                        .foregroundColor(.oneKickNeon)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .padding(.vertical, 5)
+                            .listRowBackground(Color.oneKickDarkGray)
+
+                            // Liste aktueller Co-Admins mit Entfernen
+                            ForEach(liveCommunity.coAdminIds ?? [], id: \.self) { coAdminId in
+                                HStack {
+                                    Image(systemName: "person.fill.checkmark")
+                                        .foregroundColor(.oneKickNeon)
+                                    Text(coAdminNames[coAdminId] ?? String(coAdminId.prefix(8)))
+                                        .font(.subheadline).foregroundColor(.white)
+                                    Spacer()
+                                    Button(action: {
+                                        HapticManager.instance.impact(style: .light)
+                                        Task {
+                                            try? await communityManager.removeCoAdmin(
+                                                community: community, removeId: coAdminId)
+                                        }
+                                    }) {
+                                        Text("Entfernen")
+                                            .font(.caption.bold()).foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.vertical, 5)
+                                .listRowBackground(Color.oneKickDarkGray)
+                            }
+
+                            // Admin weitergeben (Owner-Übergabe)
                             Button(action: {
                                 HapticManager.instance.impact(style: .medium)
                                 showTransferAdmin = true
@@ -127,7 +201,7 @@ struct CommunitySettingsView: View {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Admin weitergeben")
                                             .font(.headline).foregroundColor(.white)
-                                        Text("Anderes Mitglied zum Admin ernennen")
+                                        Text("Ersteller-Rolle an ein Mitglied übergeben")
                                             .font(.caption).foregroundColor(.gray)
                                     }
                                     Spacer()
@@ -142,7 +216,7 @@ struct CommunitySettingsView: View {
                     }
 
                     // --- WETTBEWERBE (nur Admin) ---
-                    if community.isCreatedByUser {
+                    if liveCommunity.isAdmin {
                         Section(header: sectionHeader("Wettbewerbe")) {
                             Button(action: {
                                 HapticManager.instance.impact(style: .medium)
@@ -165,43 +239,32 @@ struct CommunitySettingsView: View {
                         }
                     }
 
-                    // --- BONUS-KATEGORIEN (nur Admin) ---
-                    if community.isCreatedByUser {
-                        Section(header: sectionHeader("Bonus-Kategorien")) {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("Wähle, welche Bonus-Tipps in dieser Community verfügbar sind.")
-                                    .font(.caption).foregroundColor(.gray)
-
-                                ForEach(allBonusCategories, id: \.self) { category in
-                                    HStack {
-                                        Text(category)
-                                            .font(.subheadline)
-                                            .foregroundColor(selectedBonusCategories.contains(category) ? .white : .gray)
-                                        Spacer()
-                                        Image(systemName: selectedBonusCategories.contains(category)
-                                              ? "checkmark.circle.fill" : "circle")
-                                            .font(.system(size: 20))
-                                            .foregroundColor(selectedBonusCategories.contains(category)
-                                                             ? .oneKickNeon : .gray.opacity(0.4))
+                    // --- BONUSTIPPS VERWALTEN (nur Admin) ---
+                    if liveCommunity.isAdmin {
+                        Section(header: sectionHeader("Bonustipps")) {
+                            Button(action: {
+                                HapticManager.instance.impact(style: .medium)
+                                showBonusManage = true
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Bonustipps verwalten")
+                                            .font(.headline).foregroundColor(.white)
+                                        Text("Pro Liga & Pokal festlegen")
+                                            .font(.caption).foregroundColor(.oneKickNeon)
                                     }
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        HapticManager.instance.impact(style: .light)
-                                        if selectedBonusCategories.contains(category) {
-                                            selectedBonusCategories.remove(category)
-                                        } else {
-                                            selectedBonusCategories.insert(category)
-                                        }
-                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").foregroundColor(.gray)
                                 }
+                                .contentShape(Rectangle())
                             }
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 5)
                             .listRowBackground(Color.oneKickDarkGray)
                         }
                     }
 
                     // --- BONUS NACHTRAGEN + ERGEBNISSE (nur Admin) ---
-                    if community.isCreatedByUser {
+                    if liveCommunity.isAdmin {
                         Section(header: sectionHeader("Mitglieder")) {
                             Button(action: {
                                 HapticManager.instance.impact(style: .medium)
@@ -282,16 +345,30 @@ struct CommunitySettingsView: View {
 
                     // --- GEFAHRENZONE ---
                     Section(header: sectionHeader("Gefahrenzone", color: .red)) {
-                        if community.isCreatedByUser {
+                        if liveCommunity.isOwner {
                             Button(action: {
-                                HapticManager.instance.notification(type: .warning)
-                                communityManager.deleteCommunity(community)
-                                dismiss()
+                                HapticManager.instance.impact(style: .medium)
+                                showDeleteConfirm = true
                             }) {
                                 HStack { Image(systemName: "trash.fill"); Text("Community löschen"); Spacer() }
                                     .foregroundColor(.red).bold()
                                     .contentShape(Rectangle())
-                            }.listRowBackground(Color.oneKickDarkGray)
+                            }
+                            .listRowBackground(Color.oneKickDarkGray)
+                            .confirmationDialog(
+                                "Community löschen?",
+                                isPresented: $showDeleteConfirm,
+                                titleVisibility: .visible
+                            ) {
+                                Button("Löschen", role: .destructive) {
+                                    HapticManager.instance.notification(type: .warning)
+                                    communityManager.deleteCommunity(community)
+                                    dismiss()
+                                }
+                                Button("Abbrechen", role: .cancel) {}
+                            } message: {
+                                Text("\"\(community.name)\" wird endgültig gelöscht. Das kann nicht rückgängig gemacht werden.")
+                            }
                         } else {
                             Button(action: { showLeaveConfirm = true }) {
                                 HStack { Image(systemName: "rectangle.portrait.and.arrow.right"); Text("Community verlassen"); Spacer() }
@@ -327,12 +404,17 @@ struct CommunitySettingsView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Fertig") {
                         HapticManager.instance.impact(style: .light)
-                        if community.isCreatedByUser {
-                            communityManager.updateActiveLeagues(for: community, newLeagues: selectedLeagues)
-                            let isAllActive = selectedBonusCategories == Set(allBonusCategories)
-                            communityManager.updateBonusCategories(
-                                for: community,
-                                categories: isAllActive ? [] : Array(selectedBonusCategories)
+                        if liveCommunity.isAdmin {
+                            communityManager.updateActiveLeagues(for: liveCommunity, newLeagues: selectedLeagues)
+                            // Pro-Liga-Kategorien speichern
+                            var categoriesPerLeague: [String: [String]] = [:]
+                            for (league, cats) in bonusCatsPerLeague {
+                                let isAllActive = cats == Set(allBonusCategories)
+                                categoriesPerLeague[league] = isAllActive ? [] : Array(cats)
+                            }
+                            communityManager.updateBonusCategoriesPerLeague(
+                                for: liveCommunity,
+                                categoriesPerLeague: categoriesPerLeague
                             )
                         }
                         dismiss()
@@ -343,6 +425,23 @@ struct CommunitySettingsView: View {
             .fullScreenCover(isPresented: $showLeagueSelection) {
                 ManageLeaguesView(selectedLeagues: $selectedLeagues)
             }
+            .fullScreenCover(isPresented: $showBonusManage) {
+                ManageBonusView(
+                    community: liveCommunity,
+                    bonusCatsPerLeague: $bonusCatsPerLeague,
+                    lockedLeagues: lockedLeagues
+                )
+            }
+            .fullScreenCover(item: $cropItem) { item in
+                ImageCropView(
+                    image: item.image,
+                    onCancel: { cropItem = nil },
+                    onCrop: { cropped in
+                        cropItem = nil
+                        Task { await saveCommunityPhoto(cropped) }
+                    }
+                )
+            }
             .sheet(isPresented: $showBonusFill) {
                 AdminBonusFillView(community: community)
             }
@@ -352,6 +451,9 @@ struct CommunitySettingsView: View {
             .onChange(of: showTransferAdmin) { _, isShowing in
                 if isShowing { Task { await loadTransferMembers() } }
             }
+            .onChange(of: showAddAdmin) { _, isShowing in
+                if isShowing { Task { await loadTransferMembers() } }
+            }
             .sheet(isPresented: $showTransferAdmin) {
                 TransferAdminSheet(
                     members: transferMembers,
@@ -359,6 +461,20 @@ struct CommunitySettingsView: View {
                     onSelect: { member in
                         pendingNewAdmin = member
                         showTransferConfirm = true
+                    }
+                )
+            }
+            .sheet(isPresented: $showAddAdmin) {
+                AddAdminSheet(
+                    members: transferMembers.filter { !liveCommunity.allAdminIds.contains($0.userId) },
+                    isLoading: isLoadingTransfer,
+                    onSelect: { member in
+                        Task {
+                            try? await communityManager.addCoAdmin(
+                                community: community, newAdminId: member.userId)
+                            coAdminNames[member.userId] = member.displayName
+                            showAddAdmin = false
+                        }
                     }
                 )
             }
@@ -383,10 +499,31 @@ struct CommunitySettingsView: View {
                 }
             }
             .task {
-                guard community.inviteCode == nil, community.isCreatedByUser else { return }
+                guard community.inviteCode == nil, liveCommunity.isAdmin else { return }
                 if let code = try? await communityManager.generateAndSaveInviteCode(for: community) {
                     inviteCode = code
                 }
+            }
+            .task(id: liveCommunity.coAdminIds) {
+                // Anzeigenamen der Co-Admins laden (für die Liste)
+                for uid in liveCommunity.coAdminIds ?? [] where coAdminNames[uid] == nil {
+                    let doc = try? await Firestore.firestore().collection("users").document(uid).getDocument()
+                    coAdminNames[uid] = doc?.data()?["displayName"] as? String
+                        ?? doc?.data()?["email"] as? String
+                        ?? String(uid.prefix(8))
+                }
+            }
+            .task(id: community.id) {
+                // Pro-Liga-Lock: jede Liga prüft eigenständig ob md > 1
+                var locked = Set<String>()
+                for leagueName in community.activeLeagues {
+                    let lid = LeagueMapper.getID(for: leagueName)
+                    if let d = UserDefaults.standard.dictionary(forKey: "lmd_\(lid)"),
+                       let md = d["md"] as? Int, md > 1 {
+                        locked.insert(leagueName)
+                    }
+                }
+                lockedLeagues = locked
             }
         }
     }
@@ -412,30 +549,18 @@ struct CommunitySettingsView: View {
         isLoadingTransfer = false
     }
 
-    private func processAndSaveCommunityPhoto(_ item: PhotosPickerItem?) async {
-        guard let item else { return }
-        guard let data = try? await item.loadTransferable(type: Data.self),
-              let uiImage = UIImage(data: data) else { return }
-
+    // Bereits quadratisch zugeschnittenes Bild auf 120×120px verkleinern + speichern.
+    private func saveCommunityPhoto(_ croppedImage: UIImage) async {
         let size = CGSize(width: 120, height: 120)
         let renderer = UIGraphicsImageRenderer(size: size)
         let squared = renderer.image { _ in
-            let side = min(uiImage.size.width, uiImage.size.height)
-            let scale = size.width / side
-            let xOffset = (uiImage.size.width - side) / 2
-            let yOffset = (uiImage.size.height - side) / 2
-            uiImage.draw(in: CGRect(
-                x: -xOffset * scale,
-                y: -yOffset * scale,
-                width: uiImage.size.width * scale,
-                height: uiImage.size.height * scale
-            ))
+            croppedImage.draw(in: CGRect(origin: .zero, size: size))
         }
         guard let jpeg = squared.jpegData(compressionQuality: 0.6) else { return }
         let b64 = jpeg.base64EncodedString()
 
         isSavingPhoto = true
-        try? await communityManager.updateCommunityPhoto(b64, for: community)
+        try? await communityManager.updateCommunityPhoto(b64, for: liveCommunity)
         communityPhotoBase64 = b64
         isSavingPhoto = false
     }
@@ -498,6 +623,215 @@ struct TransferAdminSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Admin hinzufügen Sheet (Co-Admin)
+
+struct AddAdminSheet: View {
+    let members: [(userId: String, displayName: String)]
+    let isLoading: Bool
+    let onSelect: (( userId: String, displayName: String)) -> Void
+
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.oneKickBlack.ignoresSafeArea()
+
+                if isLoading {
+                    ProgressView().tint(.oneKickNeon)
+                } else if members.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "person.2.slash")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("Keine weiteren Mitglieder")
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    List(members, id: \.userId) { member in
+                        Button(action: {
+                            HapticManager.instance.impact(style: .medium)
+                            onSelect(member)
+                        }) {
+                            HStack {
+                                Image(systemName: "person.badge.plus")
+                                    .font(.title2)
+                                    .foregroundColor(.oneKickNeon)
+                                Text(member.displayName)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Image(systemName: "plus.circle")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .listRowBackground(Color.oneKickDarkGray)
+                    }
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .navigationTitle("Admin hinzufügen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Abbrechen") { dismiss() }
+                        .foregroundColor(.white)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Bonustipps verwalten (Liga-Liste)
+
+struct ManageBonusView: View {
+    let community: CommunityModel
+    @Binding var bonusCatsPerLeague: [String: Set<String>]
+    let lockedLeagues: Set<String>
+    @Environment(\.dismiss) var dismiss
+
+    private var sortedLeagues: [String] {
+        community.activeLeagues.sorted {
+            LeagueMapper.sortOrder(for: $0) < LeagueMapper.sortOrder(for: $1)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.oneKickBlack.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 12) {
+                        Text("Wähle pro Liga & Pokal, welche Bonustipps verfügbar sind. Gestartete Wettbewerbe sind gesperrt.")
+                            .font(.caption).foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 4).padding(.bottom, 4)
+
+                        ForEach(sortedLeagues, id: \.self) { leagueName in
+                            let isLocked = lockedLeagues.contains(leagueName)
+                            NavigationLink(destination: LeagueBonusEditView(
+                                leagueName: leagueName,
+                                isLocked: isLocked,
+                                bonusCatsPerLeague: $bonusCatsPerLeague
+                            )) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: koLeagueNames.contains(leagueName) ? "trophy.fill" : "soccerball")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(koLeagueNames.contains(leagueName) ? .yellow : .oneKickNeon)
+                                        .frame(width: 30)
+                                    Text(leagueName)
+                                        .font(.headline).foregroundColor(.white).lineLimit(1)
+                                    if isLocked {
+                                        Image(systemName: "lock.fill")
+                                            .font(.caption).foregroundColor(.orange)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .bold)).foregroundColor(.gray)
+                                }
+                                .padding(16)
+                                .background(Color.oneKickDarkGray)
+                                .cornerRadius(14)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(16)
+                }
+            }
+            .navigationTitle("Bonustipps verwalten")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Fertig") { dismiss() }
+                        .font(.headline).foregroundColor(.oneKickNeon)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Bonus-Kategorien einer Liga editieren
+
+struct LeagueBonusEditView: View {
+    let leagueName: String
+    let isLocked: Bool
+    @Binding var bonusCatsPerLeague: [String: Set<String>]
+    @Environment(\.dismiss) var dismiss
+
+    private var currentSet: Set<String> {
+        bonusCatsPerLeague[leagueName] ?? Set(allBonusCategories)
+    }
+
+    private func isOn(_ category: String) -> Bool {
+        if category == groupStageCategory {
+            return wmGroupCategories.allSatisfy { currentSet.contains($0) }
+        }
+        return currentSet.contains(category)
+    }
+
+    private func toggle(_ category: String) {
+        guard !isLocked else { return }
+        HapticManager.instance.impact(style: .light)
+        var updated = bonusCatsPerLeague[leagueName] ?? Set(allBonusCategories)
+        if category == groupStageCategory {
+            if wmGroupCategories.allSatisfy({ updated.contains($0) }) {
+                wmGroupCategories.forEach { updated.remove($0) }
+            } else {
+                wmGroupCategories.forEach { updated.insert($0) }
+            }
+        } else if updated.contains(category) {
+            updated.remove(category)
+        } else {
+            updated.insert(category)
+        }
+        bonusCatsPerLeague[leagueName] = updated
+    }
+
+    var body: some View {
+        ZStack {
+            Color.oneKickBlack.ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 6) {
+                        Text(leagueName)
+                            .font(.title3).bold().foregroundColor(.white)
+                        if isLocked {
+                            Image(systemName: "lock.fill").foregroundColor(.orange).font(.caption)
+                            Text("Läuft bereits").font(.caption).foregroundColor(.orange)
+                        }
+                    }
+                    .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 12)
+
+                    ForEach(allBonusCategoriesForLeague(leagueName), id: \.self) { category in
+                        let on = isOn(category)
+                        HStack {
+                            Text(category)
+                                .font(.subheadline)
+                                .foregroundColor(on ? .white : .gray)
+                            Spacer()
+                            Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 20))
+                                .foregroundColor(on ? .oneKickNeon : .gray.opacity(0.4))
+                        }
+                        .contentShape(Rectangle())
+                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .onTapGesture { toggle(category) }
+                        .opacity(isLocked ? 0.6 : 1.0)
+
+                        Divider().background(Color.white.opacity(0.06)).padding(.leading, 16)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+        }
+        .navigationTitle("Bonustipps")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

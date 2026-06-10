@@ -76,7 +76,8 @@ class CommunityPunkteViewModel: ObservableObject {
         let intra = ["championship round", "relegation round", "championship group", "relegation group"]
         if intra.contains(where: { round.lowercased().contains($0) }) { return false }
         let kw = ["relegation", "playoff", "play-off", "barrage",
-                  "qualification", "qualifying", "promotion", "playout", "maintien", "final"]
+                  "qualification", "qualifying", "promotion", "playout", "maintien"]
+        // "final" entfernt: Finale-Runden sind reguläre Saisonspiele, keine Playoffs
         return kw.contains { round.lowercased().contains($0) }
     }
 
@@ -337,6 +338,7 @@ class CommunityPunkteViewModel: ObservableObject {
         var currentDict: [Int: MatchData] = [:]
         var currentMatchesList: [MatchData] = []
         var processedLeagueIds = Set<Int>()
+        var stableFixtureIds = Set<Int>()
 
         func matchdayNumber(from round: String) -> Int {
             guard let dash = round.lastIndex(of: "-") else { return 0 }
@@ -388,10 +390,11 @@ class CommunityPunkteViewModel: ObservableObject {
                     let isIntra = intraRoundPatterns.contains(where: { r.lowercased().contains($0) })
                     if n > 0 && n <= max {
                         byMatchday[n, default: []].append(m)
-                    } else if canContributeToRelegation && !isIntra {
+                    } else if canContributeToRelegation && !isIntra && isPlayoffRoundName(r) {
+                        // Nur echte Playoff/Relegations-Runden → Pool (Finale gehört NICHT dazu)
                         playoffMatches.append(m)
                     } else {
-                        // Nicht-Relegations-Ligen oder ligatinterne Runden: normal scoren
+                        // Alle anderen Runden (incl. Finale) → reguläres Scoring
                         currentDict[m.fixture.id] = m
                         if !currentMatchesList.contains(where: { $0.fixture.id == m.fixture.id }) {
                             currentMatchesList.append(m)
@@ -399,7 +402,6 @@ class CommunityPunkteViewModel: ObservableObject {
                     }
                 }
 
-                var stableFixtureIds = Set<Int>()
                 for n in 1...max {
                     guard let mdMatches = byMatchday[n], !mdMatches.isEmpty else { continue }
                     let allFT = mdMatches.allSatisfy { finishedStatuses.contains($0.fixture.status.short) }
@@ -491,6 +493,23 @@ class CommunityPunkteViewModel: ObservableObject {
             return
         }
 
+        // Supplemental: Alle Bet-FixtureIDs direkt nachladen die nicht stabil gecacht sind.
+        // → entspricht Android-Logik (fetchFixturesByIds) und stellt sicher dass keine Bet-Fixtures
+        //   fehlen die nicht in regulären „Regular Season - N" Runden gelistet sind.
+        let allBetIds = Set(cachedBetsByUser.values.flatMap { $0 }.map { $0.fixtureId })
+        let nonStableIds = Array(allBetIds.subtracting(stableFixtureIds))
+        if !nonStableIds.isEmpty {
+            let playoffIds = Set(allPlayoffMatchesPool.map { $0.fixture.id })
+            let freshMatches = await api.fetchFixturesByIds(nonStableIds)
+            for m in freshMatches {
+                guard !playoffIds.contains(m.fixture.id) else { continue }
+                currentDict[m.fixture.id] = m
+                if !currentMatchesList.contains(where: { $0.fixture.id == m.fixture.id }) {
+                    currentMatchesList.append(m)
+                }
+            }
+        }
+
         // Leaderboard aus offenen/aktuellen Spielen
         var leaderboard = buildLeaderboard(
             betsByUser: cachedBetsByUser,
@@ -555,63 +574,8 @@ class CommunityPunkteViewModel: ObservableObject {
             await BadgeSystem.shared.checkAndUnlockCommunity(
                 rank: rank + 1, totalUsers: totalLeaderboard.count)
         }
-
-        await updateGlobalWmScore()
-    }
-
-    // MARK: Globale Community Score (für alle gewählten Ligen)
-
-    private func updateGlobalWmScore() async {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        guard let entry = totalLeaderboard.first(where: { $0.id == uid }) else { return }
-
-        // Ligen des Users in der Globalen Community
-        let userDoc = try? await db.collection("users").document(uid).getDocument()
-        let globalLeagues = userDoc?.data()?["globalCommunityLeagues"] as? [String] ?? []
-
-        for leagueName in community.activeLeagues {
-            guard globalLeagues.contains(leagueName) else { continue }
-            await updateGlobalCommunityScore(for: leagueName, uid: uid, entry: entry)
-        }
-    }
-
-    private func updateGlobalCommunityScore(
-        for leagueName: String, uid: String, entry: UserPointsEntry
-    ) async {
-        let matchPoints = entry.leagueBreakdown
-            .first(where: { $0.leagueName == leagueName })?.points ?? 0
-
-        var bonusPoints = 0
-        if let correct = bonusCorrectAnswers[leagueName] {
-            let userAnswers = bonusEntries.first(where: { $0.id == uid })?.answers ?? [:]
-            let activeCatSet = community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
-            for cat in bonusCategoriesForLeague(leagueName, activeCategorySet: activeCatSet) {
-                let ua = userAnswers["\(leagueName)|\(cat)"] ?? ""
-                let ca = correct[cat] ?? ""
-                guard !ua.isEmpty, !ca.isEmpty else { continue }
-                bonusPoints += BonusScoringEngine.score(userAnswer: ua, correctAnswer: ca, category: cat)
-            }
-        }
-
-        let total = matchPoints + bonusPoints
-        guard total > 0 else { return }
-
-        let firestoreKey = leagueName
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: " ", with: "_")
-            .lowercased()
-
-        let data: [String: Any] = [
-            "points":      total,
-            "displayName": entry.displayName,
-            "photoBase64": entry.photoBase64 as Any,
-            "updatedAt":   FieldValue.serverTimestamp()
-        ]
-        try? await db.collection("globalCommunityPoints")
-            .document(firestoreKey)
-            .collection("scores")
-            .document(uid)
-            .setData(data)
+        // Globale Community ist jetzt eigenständig (eigene Tipps) – kein Score-Übertrag mehr
+        // aus regulären Communities.
     }
 
     // MARK: Spielwoche-Navigation
@@ -726,10 +690,10 @@ class CommunityPunkteViewModel: ObservableObject {
     private func calcBonusPoints(userId: String) -> Int {
         guard !bonusCorrectAnswers.isEmpty else { return 0 }
         let userAnswers = bonusEntries.first(where: { $0.id == userId })?.answers ?? [:]
-        let activeCatSet = community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
         var total = 0
         for leagueName in community.activeLeagues {
             guard let correct = bonusCorrectAnswers[leagueName] else { continue }
+            let activeCatSet = community.activeBonusCats(for: leagueName)
             for cat in bonusCategoriesForLeague(leagueName, activeCategorySet: activeCatSet) {
                 let ua = userAnswers["\(leagueName)|\(cat)"] ?? ""
                 let ca = correct[cat] ?? ""
@@ -819,21 +783,39 @@ class CommunityPunkteViewModel: ObservableObject {
     // MARK: Firestore
 
     private func loadAllBets(communityId: String) async -> [CommunityBet] {
-        do {
-            let snap = try await db.collection("communities")
-                .document(communityId).collection("bets").getDocuments()
-            return snap.documents.compactMap { doc in
-                let d = doc.data()
-                guard let userId    = d["userId"]    as? String,
-                      let fixtureId = d["fixtureId"] as? Int,
-                      let home      = d["homeGoals"] as? Int,
-                      let away      = d["awayGoals"] as? Int else { return nil }
-                let email = d["email"] as? String ?? userId
-                return CommunityBet(id: doc.documentID, userId: userId, displayName: email,
-                                    fixtureId: fixtureId, homeGoals: home, awayGoals: away)
-            }
-        } catch {
-            print("🚨 loadAllBets: \(error)"); return []
+        let betsRef = db.collection("communities").document(communityId).collection("bets")
+        let myUid = Auth.auth().currentUser?.uid
+
+        // Spicken-Schutz: eigene Tipps immer; fremde Tipps nur, wenn das Spiel bereits angepfiffen
+        // ist (kickoff <= jetzt). Beide Queries werden UNABHÄNGIG behandelt – schlägt eine fehl,
+        // darf das nicht die ganze Rangliste leeren (die andere trägt weiterhin bei).
+        let mineQuery = (myUid != nil)
+            ? betsRef.whereField("userId", isEqualTo: myUid!)
+            : betsRef.whereField("userId", isEqualTo: "__none__")
+        let startedQuery = betsRef.whereField("kickoff", isLessThanOrEqualTo: Timestamp(date: Date()))
+
+        func docs(_ query: Query) async -> [QueryDocumentSnapshot] {
+            do { return try await query.getDocuments().documents }
+            catch { print("🚨 loadAllBets query: \(error)"); return [] }
+        }
+
+        async let mineDocsTask = docs(mineQuery)
+        async let startedDocsTask = docs(startedQuery)
+        let (mineDocs, startedDocs) = await (mineDocsTask, startedDocsTask)
+
+        var byId: [String: QueryDocumentSnapshot] = [:]
+        for doc in mineDocs    { byId[doc.documentID] = doc }
+        for doc in startedDocs { byId[doc.documentID] = doc }
+
+        return byId.values.compactMap { doc in
+            let d = doc.data()
+            guard let userId    = d["userId"]    as? String,
+                  let fixtureId = d["fixtureId"] as? Int,
+                  let home      = d["homeGoals"] as? Int,
+                  let away      = d["awayGoals"] as? Int else { return nil }
+            let email = d["email"] as? String ?? userId
+            return CommunityBet(id: doc.documentID, userId: userId, displayName: email,
+                                fixtureId: fixtureId, homeGoals: home, awayGoals: away)
         }
     }
 

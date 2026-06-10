@@ -126,7 +126,7 @@ class TippenViewModel: ObservableObject {
                     }
                 }
                 if !matches.isEmpty && !bonusLockedForLeague(matches: matches) {
-                    let activeCats = Set(community.activeBonusCategories ?? allBonusCategories)
+                    let activeCats = community.activeBonusCats(for: leagueName)
                     let cats = bonusCategoriesForLeague(leagueName, activeCategorySet: activeCats)
                     let answers = bonusAnswersPerCommunity[cid] ?? [:]
                     totalOpen += cats.filter { (answers["\(leagueName)|\($0)"] ?? "").isEmpty }.count
@@ -478,6 +478,9 @@ struct CommunitySelectionView: View {
                             onSelect(community)
                         }) {
                             HStack {
+                                AvatarView(displayName: community.name,
+                                           photoBase64: community.photoBase64,
+                                           size: 40)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(community.name)
                                         .font(.headline)
@@ -593,7 +596,7 @@ struct CommunitySelectionView: View {
                                             .font(.subheadline).bold()
                                             .foregroundColor(.white)
                                         if let r = r {
-                                            Text("\(lm.t("general.rank")) \(r.rank) \(lm.t("general.of")) \(r.total)")
+                                            Text("\(lm.t("general.rank")) \(r.rank) \(lm.t("general.of")) \(community.members)")
                                                 .font(.caption).foregroundColor(.gray)
                                         } else {
                                             Text(isLoadingRanks ? lm.t("general.loading") : lm.t("general.notAvailable"))

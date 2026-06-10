@@ -1,6 +1,6 @@
 /* Onglets */
 "tab.start" = "Démarrer";
-"tab.tippen" = "Pronostics";
+"tab.tippen" = "Mes pronostics";
 "tab.news" = "Actualités";
 "tab.statistik" = "Statistiques";
 "tab.community" = "Communauté";
@@ -58,7 +58,7 @@
 "community.global" = "Communauté mondiale";
 "community.joinCode" = "Rejoindre avec un code";
 "community.myRankings" = "Mes classements";
-"community.loading" = "Chargement \u{2026}";
+"community.loading" = "Chargement …";
 "community.create" = "Créer une ligue";
 "community.noLeague" = "Pas de ligue";
 "community.inviteCode" = "Votre code d’invitation";
@@ -72,7 +72,7 @@
 "tipping.edit" = "Modifier le pari";
 "tipping.liveInfo" = "Info en direct";
 "tipping.rounds" = "Tours";
-"tipping.infoOnly" = "À titre informatif \u{00B7} sans argent réel";
+"tipping.infoOnly" = "À titre informatif · sans argent réel";
 
 /* Connexion */
 "login.signIn" = "Se connecter";
@@ -88,7 +88,7 @@
 "login.or" = "ou";
 
 /* Général */
-"general.loading" = "Chargement \u{2026}";
+"general.loading" = "Chargement …";
 "general.noData" = "Aucune donnée";
 "general.error" = "Erreur";
 "general.yes" = "Oui";
@@ -99,33 +99,33 @@
 "general.rank" = "Rang";
 "general.of" = "sur";
 "general.notAvailable" = "Non disponible";
-"general.loadingLeagues" = "Chargement des ligues \u{2026}";
+"general.loadingLeagues" = "Chargement des ligues …";
 "community.of" = "sur";
 "community.tipper" = "Pronostiqueurs";
 "community.joined" = "Rejoint !";
-"community.enterCode" = "Entre le code d\u{2019}invitation de la ronde de pronostics.";
+"community.enterCode" = "Entre le code d’invitation de la ronde de pronostics.";
 "community.noLeagueDesc" = "Crée une ronde ou rejoins-en une.";
-"profile.badges.noneSelected" = "Aucun badge s\u{00E9}lectionn\u{00E9}";
+"profile.badges.noneSelected" = "Aucun badge sélectionné";
 "profile.badges.edit" = "Modifier badges";
-"profile.badges.unlock" = "D\u{00E9}bloquer badges";
+"profile.badges.unlock" = "Débloquer badges";
 "profile.tapPhoto" = "Appuyer pour changer";
-"profile.passwordReset.title" = "R\u{00E9}initialiser le mot de passe";
-"profile.passwordReset.msg" = "Nous t\u{2019}enverrons un lien de r\u{00E9}initialisation.";
+"profile.passwordReset.title" = "Réinitialiser le mot de passe";
+"profile.passwordReset.msg" = "Nous t’enverrons un lien de réinitialisation.";
 "profile.deleteAccount.title" = "Supprimer le compte ?";
-"profile.deleteAccount.msg" = "Tous tes pronostics et donn\u{00E9}es seront supprim\u{00E9}s d\u{00E9}finitivement.";
-"profile.passwordReset.sent" = "\u{2713} E-mail envoy\u{00E9}";
+"profile.deleteAccount.msg" = "Tous tes pronostics et données seront supprimés définitivement.";
+"profile.passwordReset.sent" = "✓ E-mail envoyé";
 "punkteview.overall" = "Total";
 "punkteview.leagues" = "Ligues";
 "punkteview.noTips" = "Pas encore de pronostics";
 "punkteview.currentLeader" = "Leader actuel";
 "punkteview.weeklyWinner" = "Gagnant de la semaine";
-"punkteview.loadingPoints" = "Chargement \u{2026}";
-"punkteview.noLeaderboard" = "Le classement appara\u{00EE}t ici une fois les pronostics plac\u{00E9}s.";
-"punkteview.loadingWeek" = "Chargement \u{2026}";
+"punkteview.loadingPoints" = "Chargement …";
+"punkteview.noLeaderboard" = "Le classement apparaît ici une fois les pronostics placés.";
+"punkteview.loadingWeek" = "Chargement …";
 "punkteview.noMatches" = "Pas de matchs cette semaine";
 "punkteview.noMatchesDesc" = "Aucun match cette semaine pour ces ligues.";
 "punkteview.points" = "Points";
-"home.joinLeague" = "Rejoins une ligue ou cr\u{00E9}e la tienne.";
+"home.joinLeague" = "Rejoins une ligue ou crée la tienne.";
 "home.tippers" = "Pronostiqueurs";
 
 /* Statistiques */
@@ -163,45 +163,52 @@
 "league.matchdayHeader" = "JOURNÉE";
 
 /* Mentions légales */
-"legal.impressum.title" = "Mentions l\u{00e9}gales";
-"legal.impressum.section1" = "Informations l\u{00e9}gales";
+"legal.impressum.title" = "Mentions légales";
+"legal.impressum.section1" = "Informations légales";
 "legal.impressum.section2" = "Contact";
 "legal.impressum.section3" = "Note";
-"legal.impressum.note" = "Cette application est exploit\u{00e9}e en tant que projet priv\u{00e9} non commercial. Aucune entreprise enregistr\u{00e9}e n'existe.";
-"legal.impressum.section4" = "Avis de responsabilit\u{00e9}";
-"legal.impressum.liability" = "Le contenu de cette application a \u{00e9}t\u{00e9} cr\u{00e9}\u{00e9} avec le plus grand soin. \u{00c9}tant donn\u{00e9} qu'il s'agit d'une version de test priv\u{00e9}e, aucune garantie n'est donn\u{00e9}e quant \u{00e0} l'exactitude ou l'actualit\u{00e9} des informations affich\u{00e9}es.";
+"legal.impressum.note" = "Cette application est exploitée en tant que projet privé non commercial. Aucune entreprise enregistrée n'existe.";
+"legal.impressum.section4" = "Avis de responsabilité";
+"legal.impressum.liability" = "Le contenu de cette application a été créé avec le plus grand soin. Étant donné qu'il s'agit d'une version de test privée, aucune garantie n'est donnée quant à l'exactitude ou l'actualité des informations affichées.";
 
 /* Politique de confidentialité */
-"legal.privacy.title" = "Politique de confidentialit\u{00e9}";
-"legal.privacy.s1.title" = "Aper\u{00e7}u";
-"legal.privacy.s1.text" = "Cette application est un projet priv\u{00e9} non commercial en phase de test. Cette politique de confidentialit\u{00e9} explique quelles donn\u{00e9}es sont trait\u{00e9}es et o\u{00f9}.";
-"legal.privacy.s2.title" = "Responsable du traitement (Art. 4 n\u{00b0} 7 RGPD)";
+"legal.privacy.title" = "Politique de confidentialité";
+"legal.privacy.s1.title" = "Aperçu";
+"legal.privacy.s1.text" = "Cette application est un projet privé non commercial en phase de test. Cette politique de confidentialité explique quelles données sont traitées et où.";
+"legal.privacy.s2.title" = "Responsable du traitement (Art. 4 n° 7 RGPD)";
 "legal.privacy.s3.title" = "Firebase Authentication";
-"legal.privacy.s3.text" = "Firebase Authentication de Google LLC est utilis\u{00e9} pour la connexion. Votre adresse e-mail est stock\u{00e9}e sur les serveurs de Google (Firebase). Google LLC est bas\u{00e9} aux \u{00c9}tats-Unis ; les transferts de donn\u{00e9}es sont bas\u{00e9}s sur les clauses contractuelles types de l'UE.";
-"legal.privacy.s3.link" = "Politique de confidentialit\u{00e9} Firebase : firebase.google.com/support/privacy";
-"legal.privacy.s4.title" = "Firebase Firestore (Base de donn\u{00e9}es)";
-"legal.privacy.s4.intro" = "Les donn\u{00e9}es suivantes sont stock\u{00e9}es dans Firebase Firestore (Google LLC) pour fournir les fonctionnalit\u{00e9}s de l'application :";
-"legal.privacy.s4.b1" = "\u{2022} Pronostics, pseudos, appartenances aux communaut\u{00e9}s, r\u{00e9}sultats de matchs et bonus";
-"legal.privacy.s4.b2" = "\u{2022} Messages de chat au sein des communaut\u{00e9}s (texte, ID exp\u{00e9}diteur, horodatage)";
-"legal.privacy.s4.b3" = "\u{2022} Communaut\u{00e9} mondiale : ligues s\u{00e9}lectionn\u{00e9}es, points et classement";
-"legal.privacy.s4.b4" = "\u{2022} Badges / R\u{00e9}compenses : achievements d\u{00e9}bloqu\u{00e9}s et affich\u{00e9}s";
-"legal.privacy.s4.b5" = "\u{2022} Date d'inscription : horodatage de la cr\u{00e9}ation du compte";
-"legal.privacy.s4.legal" = "Base juridique : Art. 6 al. 1 lit. b RGPD (ex\u{00e9}cution du contrat).";
+"legal.privacy.s3.text" = "Firebase Authentication de Google LLC est utilisé pour la connexion. Votre adresse e-mail est stockée sur les serveurs de Google (Firebase). Google LLC est basé aux États-Unis ; les transferts de données sont basés sur les clauses contractuelles types de l'UE.";
+"legal.privacy.s3.link" = "Politique de confidentialité Firebase : firebase.google.com/support/privacy";
+"legal.privacy.s4.title" = "Firebase Firestore (Base de données)";
+"legal.privacy.s4.intro" = "Les données suivantes sont stockées dans Firebase Firestore (Google LLC) pour fournir les fonctionnalités de l'application :";
+"legal.privacy.s4.b1" = "• Pronostics, pseudos, appartenances aux communautés, résultats de matchs et bonus";
+"legal.privacy.s4.b2" = "• Messages de chat au sein des communautés (texte, ID expéditeur, horodatage)";
+"legal.privacy.s4.b3" = "• Communauté mondiale : ligues sélectionnées, points et classement";
+"legal.privacy.s4.b4" = "• Badges / Récompenses : achievements débloqués et affichés";
+"legal.privacy.s4.b5" = "• Date d'inscription : horodatage de la création du compte";
+"legal.privacy.s4.legal" = "Base juridique : Art. 6 al. 1 lit. b RGPD (exécution du contrat).";
 "legal.privacy.s5.title" = "Connexion avec Apple et Google";
-"legal.privacy.s5.text1" = "L'application propose la connexion avec un identifiant Apple ou un compte Google. Les donn\u{00e9}es d'authentification (nom, e-mail) sont transmises \u{00e0} Firebase Authentication. Aucun mot de passe n'est stock\u{00e9} dans l'application.";
-"legal.privacy.s5.text2" = "Lors de la connexion avec Apple, seules les donn\u{00e9}es que vous partagez sont trait\u{00e9}es. Apple les transmet une seule fois lors de la premi\u{00e8}re connexion.";
-"legal.privacy.s5.link1" = "Confidentialit\u{00e9} Apple : apple.com/legal/privacy";
-"legal.privacy.s5.link2" = "Confidentialit\u{00e9} Google : policies.google.com/privacy";
-"legal.privacy.s6.title" = "API-Football (Donn\u{00e9}es de matchs)";
-"legal.privacy.s6.text" = "Des requ\u{00ea}tes sont envoy\u{00e9}es \u{00e0} l'interface API-Football pour les calendriers, r\u{00e9}sultats et statistiques. Aucune donn\u{00e9}e personnelle n'est transmise.";
+"legal.privacy.s5.text1" = "L'application propose la connexion avec un identifiant Apple ou un compte Google. Les données d'authentification (nom, e-mail) sont transmises à Firebase Authentication. Aucun mot de passe n'est stocké dans l'application.";
+"legal.privacy.s5.text2" = "Lors de la connexion avec Apple, seules les données que vous partagez sont traitées. Apple les transmet une seule fois lors de la première connexion.";
+"legal.privacy.s5.link1" = "Confidentialité Apple : apple.com/legal/privacy";
+"legal.privacy.s5.link2" = "Confidentialité Google : policies.google.com/privacy";
+"legal.privacy.s6.title" = "API-Football (Données de matchs)";
+"legal.privacy.s6.text" = "Des requêtes sont envoyées à l'interface API-Football pour les calendriers, résultats et statistiques. Aucune donnée personnelle n'est transmise.";
 "legal.privacy.s7.title" = "Stockage local (sur votre appareil)";
-"legal.privacy.s7.text" = "Les param\u{00e8}tres tels que les ligues favorites et les options d'affichage sont stock\u{00e9}s exclusivement en local via UserDefaults sur votre appareil et ne sont pas transmis \u{00e0} des serveurs externes.";
+"legal.privacy.s7.text" = "Les paramètres tels que les ligues favorites et les options d'affichage sont stockés exclusivement en local via UserDefaults sur votre appareil et ne sont pas transmis à des serveurs externes.";
 "legal.privacy.s8.title" = "Apple App Store / Rapports de plantage";
-"legal.privacy.s8.text" = "L'application est distribu\u{00e9}e via l'Apple App Store. Apple peut collecter des donn\u{00e9}es anonymis\u{00e9}es sur les plantages et l'utilisation. Le traitement est anonyme ; les utilisateurs individuels ne peuvent pas \u{00ea}tre identifi\u{00e9}s.";
+"legal.privacy.s8.text" = "L'application est distribuée via l'Apple App Store. Apple peut collecter des données anonymisées sur les plantages et l'utilisation. Le traitement est anonyme ; les utilisateurs individuels ne peuvent pas être identifiés.";
 "legal.privacy.s9.title" = "Vos droits (RGPD)";
-"legal.privacy.s9.text1" = "Vous avez le droit d'acc\u{00e8}s (Art. 15), de rectification (Art. 16), d'effacement (Art. 17), de limitation du traitement (Art. 18) et \u{00e0} la portabilit\u{00e9} des donn\u{00e9}es (Art. 20).";
+"legal.privacy.s9.text1" = "Vous avez le droit d'accès (Art. 15), de rectification (Art. 16), d'effacement (Art. 17), de limitation du traitement (Art. 18) et à la portabilité des données (Art. 20).";
 "legal.privacy.s9.text2" = "Pour exercer vos droits, contactez-nous par e-mail : benni.diedrich@gmail.com";
-"legal.privacy.s10.title" = "Pas de publicit\u{00e9}, pas de tracking";
-"legal.privacy.s10.text" = "Cette application ne contient aucune publicit\u{00e9}, aucun suivi par des tiers et aucun outil d'analyse (ex. Google Analytics).";
-"legal.privacy.stand" = "Mis \u{00e0} jour";
+"legal.privacy.s10.title" = "Pas de publicité, pas de tracking";
+"legal.privacy.s10.text" = "Cette application ne contient aucune publicité, aucun suivi par des tiers et aucun outil d'analyse (ex. Google Analytics).";
+"legal.privacy.stand" = "Mis à jour";
 "legal.privacy.date" = "Juin 2026";
+
+/* Abstimmung / Polls */
+"news.polls" = "Sondage";
+"poll.submit" = "Voter";
+"poll.vote" = "vote";
+"poll.votes" = "votes";
+"poll.empty" = "Aucun sondage actuellement";

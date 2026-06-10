@@ -24,8 +24,8 @@ final class LeaderboardCache {
     }
 
     private var cache: [String: Entry] = [:]
-    private let memoryTTL: TimeInterval = 15 * 60   // 15 Minuten
-    private let diskTTL: TimeInterval    = 24 * 60 * 60 // 24 Stunden
+    private let memoryTTL: TimeInterval = 15 * 60        // 15 Minuten
+    private let diskTTL: TimeInterval    = 7 * 24 * 60 * 60 // 7 Tage – überlebt App-Updates
 
     // MARK: - Codable Slim-Struct für UserDefaults
 
@@ -58,6 +58,14 @@ final class LeaderboardCache {
         if let data = try? JSONEncoder().encode(payload) {
             UserDefaults.standard.set(data, forKey: defaultsKey(communityId))
         }
+    }
+
+    func clearAll() {
+        cache.removeAll()
+        let defaults = UserDefaults.standard
+        defaults.dictionaryRepresentation().keys
+            .filter { $0.hasPrefix("leaderboardCache_") }
+            .forEach { defaults.removeObject(forKey: $0) }
     }
 
     // MARK: - Get

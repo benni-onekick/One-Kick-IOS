@@ -87,7 +87,11 @@ struct AdminBonusFillView: View {
 
     private var activeLeagues: [String] { community.activeLeagues.sorted() }
     private var activeCategorySet: Set<String> {
+        // Admin-View: globaler Fallback (alle Kategorien sichtbar)
         community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
+    }
+    private func activeCategorySetForLeague(_ leagueName: String) -> Set<String> {
+        community.activeBonusCats(for: leagueName)
     }
 
     var body: some View {

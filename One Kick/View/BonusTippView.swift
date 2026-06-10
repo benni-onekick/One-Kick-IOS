@@ -85,6 +85,12 @@ class BonusTippViewModel: ObservableObject {
         isLoading          = false
     }
 
+    /// Setzt einen Tipp und persistiert sofort (für die „Speichern"-Buttons in den Sub-Sheets).
+    func setAndSave(_ key: String, _ value: String) {
+        answers[key] = value
+        save()
+    }
+
     func save() {
         guard let uid = Auth.auth().currentUser?.uid,
               let cid = community.id else { return }
@@ -130,12 +136,12 @@ struct BonusTippView: View {
     @StateObject private var vm: BonusTippViewModel
     @Environment(\.dismiss) var dismiss
     @State private var activeSheet: BonusSheet?
+    @State private var showingWmGroups = false
 
     // koLeagueNames ist in BonusLeagueCard.swift (modul-weit) definiert
 
-    private var activeCategorySet: Set<String> {
-        let set = community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
-        return set.isEmpty ? Set(allBonusCategories) : set
+    private func activeCategorySet(for leagueName: String) -> Set<String> {
+        community.activeBonusCats(for: leagueName)
     }
 
     init(community: CommunityModel) {
@@ -190,13 +196,15 @@ struct BonusTippView: View {
                                         categories:  cats,
                                         isKO:        isKO,
                                         answers:     vm.answers,
+                                        wmGroupsAnsweredCount: (leagueName == "Weltmeisterschaft" && showWmGroups) ? wmGroupsAnsweredCount : nil,
                                         onTap: { category in
                                             activeSheet = BonusSheet(
                                                 leagueName: leagueName,
                                                 category:   category,
                                                 isKO:       isKO
                                             )
-                                        }
+                                        },
+                                        onTapWmGroups: (leagueName == "Weltmeisterschaft" && showWmGroups) ? { showingWmGroups = true } : nil
                                     )
                                 }
                             }
@@ -229,12 +237,32 @@ struct BonusTippView: View {
             .sheet(item: $activeSheet) { sheet in
                 sheetView(for: sheet)
             }
+            .sheet(isPresented: $showingWmGroups) {
+                WmGroupsSheet(leagueName: "Weltmeisterschaft", answers: $vm.answers, onSaved: { vm.save() })
+            }
         }
         .task { await vm.load() }
     }
 
     private func categories(for leagueName: String, isKO: Bool) -> [String] {
-        bonusCategoriesForLeague(leagueName, activeCategorySet: activeCategorySet)
+        let all = bonusCategoriesForLeague(leagueName, activeCategorySet: activeCategorySet(for: leagueName))
+        // WM-Gruppen werden als "Gruppen Platzierungen" gebündelt — nicht einzeln anzeigen
+        return leagueName == "Weltmeisterschaft"
+            ? all.filter { !$0.hasPrefix("WM Gruppe ") }
+            : all
+    }
+
+    private var wmGroupsAnsweredCount: Int {
+        wmGroupNames.filter { groupName in
+            !(vm.answers["Weltmeisterschaft|WM \(groupName)"] ?? "").isEmpty
+        }.count
+    }
+
+    // Gruppenphase-Zeile nur zeigen, wenn der Admin die Gruppen-Kategorie aktiviert hat.
+    private var showWmGroups: Bool {
+        bonusCategoriesForLeague("Weltmeisterschaft",
+                                 activeCategorySet: activeCategorySet(for: "Weltmeisterschaft"))
+            .contains { $0.hasPrefix("WM Gruppe ") }
     }
 
     @ViewBuilder
@@ -242,49 +270,69 @@ struct BonusTippView: View {
         let key   = "\(sheet.leagueName)|\(sheet.category)"
         let teams = vm.teams(for: sheet.leagueName)
 
-        switch sheet.category {
-        case "Torschützenkönig", "Meiste Vorlagen":
-            PlayerSearchSheet(
-                leagueName:           sheet.leagueName,
-                category:             sheet.category,
-                currentAnswer:        vm.answers[key] ?? "",
-                onSelect:             { vm.answers[key] = $0 },
-                searchPlayers:        { await vm.searchPlayers(in: sheet.leagueName, query: $0) },
-                isNationalTeamLeague: koLeagueNames.contains(sheet.leagueName)
-            )
-        case "Endtabelle":
+        // WM-Gruppen separat prüfen, da TableRankingSheet<String> vs. <StandingEntry> kollidiert
+        if sheet.category.hasPrefix("WM Gruppe ") {
+            let groupKey = String(sheet.category.dropFirst(3)) // "WM Gruppe A" → "Gruppe A"
             TableRankingSheet(
                 leagueName:    sheet.leagueName,
-                teams:         teams,
+                teamNames:     wmGroups[groupKey] ?? [],
                 currentAnswer: vm.answers[key] ?? "",
-                onSave:        { vm.answers[key] = $0.joined(separator: ",") }
+                onSave:        { vm.setAndSave(key, $0.joined(separator: ",")) }
             )
-        case "Finalisten tippen":
-            FinalistPickerSheet(
-                leagueName:    sheet.leagueName,
-                category:      sheet.category,
-                count:         2,
-                teams:         teams,
-                currentAnswer: vm.answers[key] ?? "",
-                onSave:        { vm.answers[key] = $0.joined(separator: ",") }
-            )
-        case "Halbfinalisten tippen":
-            FinalistPickerSheet(
-                leagueName:    sheet.leagueName,
-                category:      sheet.category,
-                count:         4,
-                teams:         teams,
-                currentAnswer: vm.answers[key] ?? "",
-                onSave:        { vm.answers[key] = $0.joined(separator: ",") }
-            )
-        default:
-            TeamPickerSheet(
-                leagueName:    sheet.leagueName,
-                category:      sheet.category,
-                teams:         teams,
-                currentAnswer: vm.answers[key] ?? "",
-                onSelect:      { vm.answers[key] = $0 }
-            )
+        } else {
+            switch sheet.category {
+            case "Sieger tippen":
+                FinalistPickerSheet(
+                    leagueName:    sheet.leagueName,
+                    category:      sheet.category,
+                    count:         1,
+                    teams:         teams,
+                    currentAnswer: vm.answers[key] ?? "",
+                    onSave:        { vm.setAndSave(key, $0.joined(separator: ",")) }
+                )
+            case "Torschützenkönig", "Meiste Vorlagen":
+                PlayerSearchSheet(
+                    leagueName:           sheet.leagueName,
+                    category:             sheet.category,
+                    currentAnswer:        vm.answers[key] ?? "",
+                    onSelect:             { vm.setAndSave(key, $0) },
+                    searchPlayers:        { await vm.searchPlayers(in: sheet.leagueName, query: $0) },
+                    isNationalTeamLeague: koLeagueNames.contains(sheet.leagueName)
+                )
+            case "Endtabelle":
+                TableRankingSheet(
+                    leagueName:    sheet.leagueName,
+                    teams:         teams,
+                    currentAnswer: vm.answers[key] ?? "",
+                    onSave:        { vm.setAndSave(key, $0.joined(separator: ",")) }
+                )
+            case "Finalisten tippen":
+                FinalistPickerSheet(
+                    leagueName:    sheet.leagueName,
+                    category:      sheet.category,
+                    count:         2,
+                    teams:         teams,
+                    currentAnswer: vm.answers[key] ?? "",
+                    onSave:        { vm.setAndSave(key, $0.joined(separator: ",")) }
+                )
+            case "Halbfinalisten tippen":
+                FinalistPickerSheet(
+                    leagueName:    sheet.leagueName,
+                    category:      sheet.category,
+                    count:         4,
+                    teams:         teams,
+                    currentAnswer: vm.answers[key] ?? "",
+                    onSave:        { vm.setAndSave(key, $0.joined(separator: ",")) }
+                )
+            default:
+                TeamPickerSheet(
+                    leagueName:    sheet.leagueName,
+                    category:      sheet.category,
+                    teams:         teams,
+                    currentAnswer: vm.answers[key] ?? "",
+                    onSelect:      { vm.setAndSave(key, $0) }
+                )
+            }
         }
     }
 }
@@ -296,12 +344,20 @@ struct BonusTippLeagueSection: View {
     let categories: [String]
     let isKO:       Bool
     let answers:    [String: String]
+    var wmGroupsAnsweredCount: Int? = nil   // nil = keine WM-Gruppen-Sektion zeigen
     let onTap:      (String) -> Void
+    var onTapWmGroups: (() -> Void)? = nil
 
     @State private var isExpanded = true
 
     private var answeredCount: Int {
-        categories.filter { !(answers["\(leagueName)|\($0)"] ?? "").isEmpty }.count
+        var count = categories.filter { !(answers["\(leagueName)|\($0)"] ?? "").isEmpty }.count
+        if let wm = wmGroupsAnsweredCount { count += wm }
+        return count
+    }
+
+    private var totalCount: Int {
+        categories.count + (wmGroupsAnsweredCount != nil ? wmGroupNames.count : 0)
     }
 
     var body: some View {
@@ -320,14 +376,15 @@ struct BonusTippLeagueSection: View {
 
                     Spacer()
 
-                    Text("\(answeredCount)/\(categories.count)")
+                    Text("\(answeredCount)/\(totalCount)")
                         .font(.caption.bold())
-                        .foregroundColor(answeredCount == categories.count ? .oneKickNeon : .gray)
+                        .foregroundColor(answeredCount == totalCount ? .oneKickNeon : .gray)
 
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.caption.bold()).foregroundColor(.gray)
                 }
                 .padding(16)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -363,12 +420,40 @@ struct BonusTippLeagueSection: View {
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
 
                         if idx < categories.count - 1 {
                             Divider().background(Color.white.opacity(0.06)).padding(.leading, 16)
                         }
+                    }
+
+                    // WM-Gruppen-Platzierungen als gebündelte Zeile (öffnet WmGroupsSheet)
+                    if let wmCount = wmGroupsAnsweredCount, let onWm = onTapWmGroups {
+                        if !categories.isEmpty {
+                            Divider().background(Color.white.opacity(0.06)).padding(.leading, 16)
+                        }
+                        Button(action: onWm) {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Gruppen-Platzierungen")
+                                        .font(.subheadline).foregroundColor(.white)
+                                    Text(wmCount == wmGroupNames.count
+                                         ? "Alle Gruppen getippt"
+                                         : "\(wmCount)/\(wmGroupNames.count) Gruppen getippt")
+                                        .font(.caption)
+                                        .foregroundColor(wmCount == 0 ? .gray.opacity(0.6) : .oneKickNeon)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.gray.opacity(0.5))
+                            }
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.bottom, 8)

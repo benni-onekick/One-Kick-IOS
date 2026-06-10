@@ -1,6 +1,6 @@
 /* Tabbladen */
 "tab.start" = "Start";
-"tab.tippen" = "Tippen";
+"tab.tippen" = "Mijn tips";
 "tab.news" = "Nieuws";
 "tab.statistik" = "Statistieken";
 "tab.community" = "Community";
@@ -58,7 +58,7 @@
 "community.global" = "Globale Community";
 "community.joinCode" = "Deelnemen met code";
 "community.myRankings" = "Mijn rangschikkingen";
-"community.loading" = "Laden \u{2026}";
+"community.loading" = "Laden …";
 "community.create" = "Liga aanmaken";
 "community.noLeague" = "Geen Liga";
 "community.inviteCode" = "Jouw uitnodigingscode";
@@ -72,7 +72,7 @@
 "tipping.edit" = "Tip wijzigen";
 "tipping.liveInfo" = "Live Info";
 "tipping.rounds" = "Rondes";
-"tipping.infoOnly" = "Alleen ter informatie \u{00B7} geen echt geld";
+"tipping.infoOnly" = "Alleen ter informatie · geen echt geld";
 
 /* Login */
 "login.signIn" = "Aanmelden";
@@ -88,7 +88,7 @@
 "login.or" = "of";
 
 /* Algemeen */
-"general.loading" = "Laden \u{2026}";
+"general.loading" = "Laden …";
 "general.noData" = "Geen gegevens";
 "general.error" = "Fout";
 "general.yes" = "Ja";
@@ -99,7 +99,7 @@
 "general.rank" = "Positie";
 "general.of" = "van";
 "general.notAvailable" = "Niet beschikbaar";
-"general.loadingLeagues" = "Competities laden \u{2026}";
+"general.loadingLeagues" = "Competities laden …";
 "community.of" = "van";
 "community.tipper" = "Tippers";
 "community.joined" = "Lid geworden!";
@@ -113,15 +113,15 @@
 "profile.passwordReset.msg" = "We sturen je een link om je wachtwoord opnieuw in te stellen.";
 "profile.deleteAccount.title" = "Account verwijderen?";
 "profile.deleteAccount.msg" = "Al je tips en gegevens worden permanent verwijderd.";
-"profile.passwordReset.sent" = "\u{2713} E-mail verzonden";
+"profile.passwordReset.sent" = "✓ E-mail verzonden";
 "punkteview.overall" = "Totaal";
 "punkteview.leagues" = "Competities";
 "punkteview.noTips" = "Nog geen tips";
 "punkteview.currentLeader" = "Huidige leider";
 "punkteview.weeklyWinner" = "Weekwinnaar";
-"punkteview.loadingPoints" = "Seizoenspunten laden \u{2026}";
+"punkteview.loadingPoints" = "Seizoenspunten laden …";
 "punkteview.noLeaderboard" = "De ranglijst verschijnt hier zodra tips zijn geplaatst.";
-"punkteview.loadingWeek" = "Speelweek laden \u{2026}";
+"punkteview.loadingWeek" = "Speelweek laden …";
 "punkteview.noMatches" = "Geen wedstrijden deze week";
 "punkteview.noMatchesDesc" = "Er zijn geen wedstrijden gepland deze week voor deze competities.";
 "punkteview.points" = "Punten";
@@ -181,11 +181,11 @@
 "legal.privacy.s3.link" = "Firebase privacybeleid: firebase.google.com/support/privacy";
 "legal.privacy.s4.title" = "Firebase Firestore (Database)";
 "legal.privacy.s4.intro" = "De volgende gegevens worden opgeslagen in Firebase Firestore (Google LLC) om de app-functies te bieden:";
-"legal.privacy.s4.b1" = "\u{2022} Tips, gebruikersnamen, community-lidmaatschappen, wedstrijdresultaten en bonustips";
-"legal.privacy.s4.b2" = "\u{2022} Chatberichten binnen communities (tekst, afzender-ID, tijdstempel)";
-"legal.privacy.s4.b3" = "\u{2022} Globale Community: geselecteerde competities, punten en rangschikking";
-"legal.privacy.s4.b4" = "\u{2022} Badges / Prestaties: ontgrendelde en weergegeven achievements";
-"legal.privacy.s4.b5" = "\u{2022} Toetredingsdatum: tijdstempel van accountaanmaak";
+"legal.privacy.s4.b1" = "• Tips, gebruikersnamen, community-lidmaatschappen, wedstrijdresultaten en bonustips";
+"legal.privacy.s4.b2" = "• Chatberichten binnen communities (tekst, afzender-ID, tijdstempel)";
+"legal.privacy.s4.b3" = "• Globale Community: geselecteerde competities, punten en rangschikking";
+"legal.privacy.s4.b4" = "• Badges / Prestaties: ontgrendelde en weergegeven achievements";
+"legal.privacy.s4.b5" = "• Toetredingsdatum: tijdstempel van accountaanmaak";
 "legal.privacy.s4.legal" = "Rechtsgrondslag: Art. 6 lid 1 sub b AVG (uitvoering overeenkomst).";
 "legal.privacy.s5.title" = "Aanmelden met Apple en Google";
 "legal.privacy.s5.text1" = "De app biedt aanmelding met Apple ID of Google-account. Authenticatiegegevens (naam, e-mail) worden verzonden naar Firebase Authentication. Er worden geen wachtwoorden opgeslagen in de app.";
@@ -197,7 +197,7 @@
 "legal.privacy.s7.title" = "Lokale opslag (op uw apparaat)";
 "legal.privacy.s7.text" = "Instellingen zoals favoriete competities en weergaveopties worden uitsluitend lokaal opgeslagen via UserDefaults op uw apparaat en worden niet naar externe servers verzonden.";
 "legal.privacy.s8.title" = "Apple App Store / Crashrapporten";
-"legal.privacy.s8.text" = "De app wordt gedistribueerd via de Apple App Store. Apple kan geanonimiseerde crash- en gebruiksgegevens verzamelen. Verwerking is anoniem; individuele gebruikers kunnen niet worden ge\u{00ef}dentificeerd.";
+"legal.privacy.s8.text" = "De app wordt gedistribueerd via de Apple App Store. Apple kan geanonimiseerde crash- en gebruiksgegevens verzamelen. Verwerking is anoniem; individuele gebruikers kunnen niet worden geïdentificeerd.";
 "legal.privacy.s9.title" = "Uw rechten (AVG)";
 "legal.privacy.s9.text1" = "U heeft het recht op inzage (Art. 15), rectificatie (Art. 16), verwijdering (Art. 17), beperking van verwerking (Art. 18) en gegevensoverdraagbaarheid (Art. 20).";
 "legal.privacy.s9.text2" = "Om uw rechten uit te oefenen, neem contact op via e-mail: benni.diedrich@gmail.com";
@@ -205,3 +205,10 @@
 "legal.privacy.s10.text" = "Deze app bevat geen reclame, geen tracking door derden en geen analysetools (bijv. Google Analytics).";
 "legal.privacy.stand" = "Bijgewerkt";
 "legal.privacy.date" = "Juni 2026";
+
+/* Abstimmung / Polls */
+"news.polls" = "Stemming";
+"poll.submit" = "Stemmen";
+"poll.vote" = "stem";
+"poll.votes" = "stemmen";
+"poll.empty" = "Momenteel geen stemming";

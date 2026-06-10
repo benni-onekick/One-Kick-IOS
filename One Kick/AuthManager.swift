@@ -87,7 +87,8 @@ class AuthManager: ObservableObject {
                 req.displayName = displayName
                 try await req.commitChanges()
 
-                // 5. Verifizierungsmail senden
+                // 5. Verifizierungsmail senden (Deutsch → landet seltener im Spam)
+                Auth.auth().languageCode = "de"
                 try? await result.user.sendEmailVerification()
 
                 await MainActor.run {

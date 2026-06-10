@@ -40,8 +40,14 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
     /// Welche Wettbewerbe sind in dieser Liga aktiv?
     var activeLeagues: Set<String>
 
-    /// Welche Bonus-Kategorien sind aktiv? nil = alle aktiv.
+    /// Welche Bonus-Kategorien sind aktiv? nil = alle aktiv. (globaler Fallback)
     var activeBonusCategories: [String]?
+
+    /// Pro-Liga-Bonus-Kategorien: leagueName → [Kategorie]. Überschreibt activeBonusCategories für diese Liga.
+    var activeBonusCategoriesPerLeague: [String: [String]]?
+
+    /// Zusätzliche Admins neben dem Ersteller (adminId). Co-Admins: alle Rechte außer Löschen/Admin-Verwaltung.
+    var coAdminIds: [String]?
 
     /// Einladungscode zum Beitreten.
     var inviteCode: String?
@@ -61,6 +67,9 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
         name: String,
         memberIds: [String] = [],
         activeLeagues: Set<String> = [],
+        activeBonusCategories: [String]? = nil,
+        activeBonusCategoriesPerLeague: [String: [String]]? = nil,
+        coAdminIds: [String]? = nil,
         inviteCode: String? = nil,
         createdAt: Date = Date(),
         selectedMatchIds: [String: [Int]]? = nil,
@@ -71,6 +80,9 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
         self.name = name
         self.memberIds = memberIds
         self.activeLeagues = activeLeagues
+        self.activeBonusCategories = activeBonusCategories
+        self.activeBonusCategoriesPerLeague = activeBonusCategoriesPerLeague
+        self.coAdminIds = coAdminIds
         self.inviteCode = inviteCode
         self.createdAt = createdAt
         self.selectedMatchIds = selectedMatchIds
@@ -82,13 +94,41 @@ struct CommunityModel: Identifiable, Codable, Equatable, Hashable {
     /// Anzahl Mitglieder – ersetzt das alte hartcodierte `members: Int`.
     var members: Int { memberIds.count }
 
-    /// Darf der aktuelle User Admin-Aktionen ausführen?
-    /// Ersetzt das alte hartcodierte `isCreatedByUser`.
-    var isCreatedByUser: Bool {
-        guard let currentUserId = Auth.auth().currentUser?.uid,
-              let adminId = adminId else { return false }
-        return adminId == currentUserId
+    /// Aktive Bonus-Kategorien für eine spezifische Liga.
+    /// Prüft zuerst per-Liga-Einstellungen, fällt dann auf globale zurück.
+    func activeBonusCats(for leagueName: String) -> Set<String> {
+        if let perLeague = activeBonusCategoriesPerLeague,
+           let cats = perLeague[leagueName], !cats.isEmpty {
+            return Set(cats)
+        }
+        return activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
     }
+
+    /// Alle Admin-User-IDs (Ersteller + Co-Admins).
+    var allAdminIds: [String] {
+        [adminId].compactMap { $0 } + (coAdminIds ?? [])
+    }
+
+    /// Ist der aktuelle User der Ersteller/Owner? Darf löschen + Admins verwalten.
+    var isOwner: Bool {
+        guard let me = Auth.auth().currentUser?.uid, let adminId else { return false }
+        return adminId == me
+    }
+
+    /// Darf der aktuelle User Admin-Aktionen (Name, Foto, Ligen, Bonus) ausführen?
+    /// True für Owner UND Co-Admins.
+    var isAdmin: Bool {
+        guard let me = Auth.auth().currentUser?.uid else { return false }
+        return adminId == me || (coAdminIds?.contains(me) ?? false)
+    }
+
+    /// Permission-Check für eine konkrete User-ID (für Manager-Guards).
+    func isAdmin(_ uid: String) -> Bool {
+        adminId == uid || (coAdminIds?.contains(uid) ?? false)
+    }
+
+    /// Rückwärtskompatibler Alias – bedeutet jetzt "Owner".
+    var isCreatedByUser: Bool { isOwner }
 }
 
 // ============================================================
@@ -300,7 +340,7 @@ class CommunityManager: ObservableObject {
         guard let userId = Auth.auth().currentUser?.uid else {
             completion?(CommunityError.notAuthenticated); return
         }
-        guard community.adminId == userId else {
+        guard community.isAdmin(userId) else {
             completion?(CommunityError.notAdmin); return
         }
         guard let id = community.id else {
@@ -320,6 +360,31 @@ class CommunityManager: ObservableObject {
         }
     }
 
+    /// Pro-Liga-Bonus-Kategorien setzen. Nur Admins.
+    func updateBonusCategoriesPerLeague(
+        for community: CommunityModel,
+        categoriesPerLeague: [String: [String]],
+        completion: ((Error?) -> Void)? = nil
+    ) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion?(CommunityError.notAuthenticated); return
+        }
+        guard community.isAdmin(userId) else {
+            completion?(CommunityError.notAdmin); return
+        }
+        guard let id = community.id else {
+            completion?(CommunityError.missingId); return
+        }
+        db.collection("communities").document(id).updateData([
+            "activeBonusCategoriesPerLeague": categoriesPerLeague
+        ]) { [weak self] error in
+            if let error = error {
+                DispatchQueue.main.async { self?.errorMessage = error.localizedDescription }
+            }
+            completion?(error)
+        }
+    }
+
     /// Bonus-Kategorien einer Community setzen. Nur Admins.
     func updateBonusCategories(
         for community: CommunityModel,
@@ -329,7 +394,7 @@ class CommunityManager: ObservableObject {
         guard let userId = Auth.auth().currentUser?.uid else {
             completion?(CommunityError.notAuthenticated); return
         }
-        guard community.adminId == userId else {
+        guard community.isAdmin(userId) else {
             completion?(CommunityError.notAdmin); return
         }
         guard let id = community.id else {
@@ -348,7 +413,7 @@ class CommunityManager: ObservableObject {
     /// Community-Profilbild setzen. Nur Admins.
     func updateCommunityPhoto(_ base64: String, for community: CommunityModel) async throws {
         guard let userId = Auth.auth().currentUser?.uid else { throw CommunityError.notAuthenticated }
-        guard community.adminId == userId else { throw CommunityError.notAdmin }
+        guard community.isAdmin(userId) else { throw CommunityError.notAdmin }
         guard let id = community.id else { throw CommunityError.missingId }
         try await db.collection("communities").document(id).updateData(["photoBase64": base64])
         if let idx = communities.firstIndex(where: { $0.id == id }) {
@@ -364,6 +429,32 @@ class CommunityManager: ObservableObject {
         try await db.collection("communities").document(id).updateData(["adminId": newAdminId])
         if let idx = communities.firstIndex(where: { $0.id == id }) {
             communities[idx].adminId = newAdminId
+        }
+    }
+
+    /// Co-Admin hinzufügen. Nur der Owner (Ersteller).
+    func addCoAdmin(community: CommunityModel, newAdminId: String) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { throw CommunityError.notAuthenticated }
+        guard community.adminId == uid else { throw CommunityError.notAdmin }
+        guard let id = community.id else { throw CommunityError.missingId }
+        try await db.collection("communities").document(id)
+            .updateData(["coAdminIds": FieldValue.arrayUnion([newAdminId])])
+        if let idx = communities.firstIndex(where: { $0.id == id }) {
+            var list = communities[idx].coAdminIds ?? []
+            if !list.contains(newAdminId) { list.append(newAdminId) }
+            communities[idx].coAdminIds = list
+        }
+    }
+
+    /// Co-Admin entfernen. Nur der Owner (Ersteller).
+    func removeCoAdmin(community: CommunityModel, removeId: String) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { throw CommunityError.notAuthenticated }
+        guard community.adminId == uid else { throw CommunityError.notAdmin }
+        guard let id = community.id else { throw CommunityError.missingId }
+        try await db.collection("communities").document(id)
+            .updateData(["coAdminIds": FieldValue.arrayRemove([removeId])])
+        if let idx = communities.firstIndex(where: { $0.id == id }) {
+            communities[idx].coAdminIds = (communities[idx].coAdminIds ?? []).filter { $0 != removeId }
         }
     }
 

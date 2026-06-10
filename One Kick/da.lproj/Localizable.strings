@@ -1,0 +1,223 @@
+/* Faner */
+"tab.start" = "Start";
+"tab.tippen" = "Mine tips";
+"tab.news" = "Nyheder";
+"tab.statistik" = "Statistik";
+"tab.community" = "Community";
+
+/* Handlinger */
+"action.save" = "Gem";
+"action.cancel" = "Annuller";
+"action.done" = "Færdig";
+"action.close" = "Luk";
+"action.confirm" = "Bekræft";
+"action.back" = "Tilbage";
+"action.join" = "Deltag";
+"action.add" = "Tilføj";
+"action.edit" = "Rediger";
+"action.delete" = "Slet";
+"action.leave" = "Forlad";
+"action.send" = "Send";
+"action.refresh" = "Opdater";
+"action.start" = "Kom i gang";
+"action.report" = "Anmeld";
+"action.block" = "Bloker";
+
+/* Profil */
+"profile.title" = "Profil og indstillinger";
+"profile.section.profile" = "Min profil";
+"profile.section.tipping" = "Tips";
+"profile.section.security" = "Sikkerhed";
+"profile.section.legal" = "Juridisk";
+"profile.section.badges" = "Mine badges";
+"profile.language" = "Sprog";
+"profile.changeName" = "Skift visningsnavn";
+"profile.favorites" = "Favoritligaer og -hold";
+"profile.resetPassword" = "Nulstil adgangskode";
+"profile.logout" = "Log ud";
+"profile.deleteAccount" = "Slet konto";
+"profile.crossCommunity" = "Tip på tværs";
+"profile.showOdds" = "Vis odds";
+"profile.notifications" = "Tip-påmindelser";
+"profile.impressum" = "Kolofon";
+"profile.privacy" = "Privatliv";
+
+/* Hjem */
+"home.welcome" = "Velkommen til One Kick";
+"home.welcomeBack" = "Velkommen tilbage";
+"home.openTips" = "Mine åbne tips";
+"home.topMatches" = "Topkampe";
+"home.allTipped" = "Du har tippet alle kampe.";
+"home.noTopMatches" = "Ingen topkampe tilgængelige.";
+"home.tipNow" = "Tip nu";
+
+/* Community */
+"community.overview" = "Dit overblik";
+"community.my" = "Mine communities";
+"community.showAll" = "Vis alle";
+"community.global" = "Global community";
+"community.joinCode" = "Deltag med kode";
+"community.myRankings" = "Mine placeringer";
+"community.loading" = "Indlæser…";
+"community.create" = "Opret liga";
+"community.noLeague" = "Ingen liga";
+"community.inviteCode" = "Din invitationskode";
+
+/* Tips */
+"tipping.matchday" = "Spilledag";
+"tipping.table" = "Tabel";
+"tipping.lineup" = "Opstilling";
+"tipping.groups" = "Grupper";
+"tipping.place" = "Afgiv tip";
+"tipping.edit" = "Ret tip";
+"tipping.liveInfo" = "Live-info";
+"tipping.rounds" = "Runder";
+"tipping.infoOnly" = "Kun til information · ingen rigtige penge";
+
+/* Login */
+"login.signIn" = "Log ind";
+"login.register" = "Opret";
+"login.email" = "E-mailadresse";
+"login.password" = "Adgangskode";
+"login.displayName" = "Visningsnavn";
+"login.createAccount" = "Opret konto";
+"login.loginButton" = "Log ind";
+"login.forgotPassword" = "Glemt adgangskode?";
+"login.appleSignIn" = "Log ind med Apple";
+"login.googleSignIn" = "Log ind med Google";
+"login.or" = "eller";
+
+/* Generelt */
+"general.loading" = "Indlæser…";
+"general.noData" = "Ingen data";
+"general.error" = "Fejl";
+"general.yes" = "Ja";
+"general.no" = "Nej";
+"general.ok" = "OK";
+"general.points" = "Pt";
+"general.pts" = "Pt";
+"general.rank" = "Plads";
+"general.of" = "af";
+"general.notAvailable" = "Ikke tilgængelig";
+"general.loadingLeagues" = "Indlæser ligaer…";
+
+/* Community (tilføjelser) */
+"community.of" = "af";
+"community.tipper" = "Tippere";
+"community.entered" = "Tilmeldt!";
+"community.joined" = "Tilmeldt!";
+"community.enterCode" = "Indtast ligaens invitationskode.";
+"community.noLeagueDesc" = "Opret en liga eller deltag i en.";
+
+/* Profil (tilføjelser) */
+"profile.badges.noneSelected" = "Ingen badges valgt endnu";
+"profile.badges.edit" = "Rediger badges";
+"profile.badges.unlock" = "Lås badges op";
+"profile.tapPhoto" = "Tryk på billedet for at ændre";
+"profile.passwordReset.title" = "Nulstil adgangskode";
+"profile.passwordReset.msg" = "Vi sender dig et link til at nulstille din adgangskode.";
+"profile.deleteAccount.title" = "Vil du virkelig slette kontoen?";
+"profile.deleteAccount.msg" = "Alle dine tips og data slettes uigenkaldeligt.";
+"profile.passwordReset.sent" = "✓ E-mail sendt";
+
+/* Pointoversigt */
+"punkteview.overall" = "Samlet";
+"punkteview.leagues" = "Ligaer";
+"punkteview.noTips" = "Ingen tips endnu";
+"punkteview.currentLeader" = "Aktuel fører";
+"punkteview.weeklyWinner" = "Ugens vinder";
+"punkteview.loadingPoints" = "Indlæser sæsonpoint…";
+"punkteview.noLeaderboard" = "Ranglisten vises her, så snart der er afgivet tips.";
+"punkteview.loadingWeek" = "Indlæser spilleuge…";
+"punkteview.noMatches" = "Ingen kampe i denne uge";
+"punkteview.noMatchesDesc" = "Der er ingen kampe for disse ligaer i denne uge.";
+"punkteview.points" = "Point";
+
+/* Hjem (tilføjelser) */
+"home.joinLeague" = "Deltag i en liga eller opret din egen.";
+"home.tippers" = "Tippere";
+
+/* Statistik */
+"stats.totalPoints" = "Samlede point";
+"stats.perGame" = "Ø pr. kamp";
+"stats.evaluated" = "Vurderet";
+"stats.precision" = "TIP-PRÆCISION";
+"stats.correctTrend" = "Korrekt tendens";
+"stats.draw" = "Uafgjort";
+"stats.exactScore" = "Fuldtræffer";
+"stats.goalRatio" = "Målforhold";
+"stats.homeGoals" = "Hjemmemål korrekt";
+"stats.awayGoals" = "Udemål";
+"stats.currentStreak" = "Aktuel stime";
+"stats.bestStreak" = "Bedste stime";
+"stats.top5Leagues" = "TOP 5 LIGAER";
+"stats.maxPts" = "maks. 7 pt";
+"stats.tipsEvaluated" = "vurderede tips";
+"stats.consecutivePts" = "i træk med point";
+"stats.longestStreak" = "længste stime i alt";
+
+/* Nyheder */
+"news.onlyFavorites" = "Kun favoritter";
+"news.allLeagues" = "Alle aktive ligaer";
+"news.transfers" = "Transfers";
+
+/* Vælg badges */
+"badge.pickTitle" = "Vælg badges";
+"badge.pickHint" = "Vælg op til 3 badges til din profil.";
+"badge.unlocked" = "Låst op";
+"badge.toEarn" = "Endnu ikke optjent";
+"badge.noneYet" = "Ingen badges låst op endnu";
+
+/* Liga */
+"league.matchdayHeader" = "SPILLEDAG";
+
+/* Kolofon */
+"legal.impressum.title" = "Kolofon";
+"legal.impressum.section1" = "Oplysninger i henhold til § 5 TMG";
+"legal.impressum.section2" = "Kontakt";
+"legal.impressum.section3" = "Bemærkning";
+"legal.impressum.note" = "Denne app drives som et privat, ikke-kommercielt projekt. Der er ingen registreret virksomhed.";
+"legal.impressum.section4" = "Ansvarsfraskrivelse";
+"legal.impressum.liability" = "Indholdet i denne app er udarbejdet med størst mulig omhu. Da der er tale om en privat testversion, gives der ingen garanti for, at de viste oplysninger er korrekte, fuldstændige eller aktuelle.";
+
+/* Privatliv */
+"legal.privacy.title" = "Privatliv";
+"legal.privacy.s1.title" = "Overblik";
+"legal.privacy.s1.text" = "Denne app er et privat, ikke-kommercielt projekt i testfasen. Privatlivspolitikken oplyser, hvilke data der behandles, og hvor.";
+"legal.privacy.s2.title" = "Dataansvarlig (art. 4 nr. 7 GDPR)";
+"legal.privacy.s3.title" = "Firebase Authentication";
+"legal.privacy.s3.text" = "Til login bruges Firebase Authentication fra Google LLC. Din e-mailadresse gemmes på Googles servere (Firebase). Google LLC har hjemsted i USA; dataoverførslen sker på grundlag af EU's standardkontraktbestemmelser.";
+"legal.privacy.s3.link" = "Firebase privatlivspolitik: firebase.google.com/support/privacy";
+"legal.privacy.s4.title" = "Firebase Firestore (database)";
+"legal.privacy.s4.intro" = "Følgende data gemmes i Firebase Firestore (Google LLC) for at levere app-funktionerne:";
+"legal.privacy.s4.b1" = "• Tip-data, brugernavne, community-medlemskaber, kampresultater og bonustips";
+"legal.privacy.s4.b2" = "• Chatbeskeder i communities (tekst, afsender-ID, tidsstempel)";
+"legal.privacy.s4.b3" = "• Global community: valgte ligaer, pointstilling og placering";
+"legal.privacy.s4.b4" = "• Badges / præstationer: oplåste og viste achievements";
+"legal.privacy.s4.b5" = "• Tilmeldingsdato: tidsstempel for kontooprettelsen";
+"legal.privacy.s4.legal" = "Retsgrundlag: art. 6, stk. 1, litra b GDPR (opfyldelse af kontrakt / foranstaltninger forud for kontrakt).";
+"legal.privacy.s5.title" = "Login med Apple og Google";
+"legal.privacy.s5.text1" = "Appen giver mulighed for at logge ind med Apple ID eller en Google-konto. Godkendelsesdata (navn, e-mail) overføres til Firebase Authentication. Der gemmes ingen adgangskoder i appen.";
+"legal.privacy.s5.text2" = "Ved login med Apple behandles kun de data, du har frigivet. Apple sender dem kun én gang ved første login.";
+"legal.privacy.s5.link1" = "Apple privatliv: apple.com/legal/privacy";
+"legal.privacy.s5.link2" = "Google privatliv: policies.google.com/privacy";
+"legal.privacy.s6.title" = "API-Football (kampdata)";
+"legal.privacy.s6.text" = "Til kampprogrammer, resultater og statistik sendes der forespørgsler til API-Football-grænsefladen. Der overføres ingen personoplysninger.";
+"legal.privacy.s7.title" = "Lokal lagring (på din enhed)";
+"legal.privacy.s7.text" = "Indstillinger som favoritligaer og visningsindstillinger gemmes udelukkende lokalt via UserDefaults på din enhed og overføres ikke til eksterne servere.";
+"legal.privacy.s8.title" = "Apple App Store / nedbrudsrapporter";
+"legal.privacy.s8.text" = "Appen distribueres via Apple App Store. Apple kan indsamle anonyme nedbruds- og brugsdata. Behandlingen er anonym; det er ikke muligt at identificere enkelte brugere.";
+"legal.privacy.s9.title" = "Dine rettigheder (GDPR)";
+"legal.privacy.s9.text1" = "Du har ret til indsigt (art. 15), berigtigelse (art. 16), sletning (art. 17), begrænsning af behandlingen (art. 18) samt ret til dataportabilitet (art. 20).";
+"legal.privacy.s9.text2" = "For at udøve dine rettigheder kan du skrive en e-mail til: benni.diedrich@gmail.com";
+"legal.privacy.s10.title" = "Ingen reklamer, ingen sporing";
+"legal.privacy.s10.text" = "Denne app indeholder ingen reklamer, ingen tredjepartssporing og ingen analyseværktøjer (f.eks. Google Analytics).";
+"legal.privacy.stand" = "Opdateret";
+"legal.privacy.date" = "Juni 2026";
+
+/* Abstimmung / Polls */
+"news.polls" = "Afstemning";
+"poll.submit" = "Stem";
+"poll.vote" = "stemme";
+"poll.votes" = "stemmer";
+"poll.empty" = "Ingen afstemninger lige nu";

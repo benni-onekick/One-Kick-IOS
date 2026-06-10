@@ -13,9 +13,9 @@ struct MatchdayPointsCache {
     static let shared = MatchdayPointsCache()
     private init() {}
 
-    // Cache-Einträge laufen nach 36h ab → stellt sicher dass nachträglich korrigierte
-    // Ergebnisse (z.B. Live-Scores die gecacht wurden) beim nächsten Öffnen neu berechnet werden
-    private let ttl: TimeInterval = 36 * 3600
+    // Nur abgeschlossene Spieltage (alle FT) werden gecacht → Punkte ändern sich praktisch nie.
+    // Lange TTL (30 Tage) verhindert teure Neuberechnung nach App-Updates.
+    private let ttl: TimeInterval = 30 * 24 * 3600
 
     private struct CacheEntry: Codable {
         let points: [String: Int]

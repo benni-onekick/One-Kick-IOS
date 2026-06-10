@@ -23,8 +23,8 @@ struct AdminBonusResultsView: View {
     private let db = Firestore.firestore()
 
     private var activeLeagues: [String] { community.activeLeagues.sorted() }
-    private var activeCategorySet: Set<String> {
-        community.activeBonusCategories.map { Set($0) } ?? Set(allBonusCategories)
+    private func activeCategorySet(for leagueName: String) -> Set<String> {
+        community.activeBonusCats(for: leagueName)
     }
 
     var body: some View {
@@ -75,7 +75,7 @@ struct AdminBonusResultsView: View {
     }
 
     private func leagueSection(_ leagueName: String) -> some View {
-        let activeCats = bonusCategoriesForLeague(leagueName, activeCategorySet: activeCategorySet)
+        let activeCats = bonusCategoriesForLeague(leagueName, activeCategorySet: activeCategorySet(for: leagueName))
         guard !activeCats.isEmpty else { return AnyView(EmptyView()) }
 
         return AnyView(

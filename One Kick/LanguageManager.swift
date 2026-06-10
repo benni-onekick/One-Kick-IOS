@@ -17,6 +17,9 @@ class LanguageManager: ObservableObject {
         ("en", "English",    "🇬🇧"),
         ("nl", "Nederlands", "🇳🇱"),
         ("fr", "Français",   "🇫🇷"),
+        ("it", "Italiano",   "🇮🇹"),
+        ("es", "Español",    "🇪🇸"),
+        ("da", "Dansk",      "🇩🇰"),
     ]
 
     @Published var currentLanguage: String {

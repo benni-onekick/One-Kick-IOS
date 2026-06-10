@@ -11,6 +11,8 @@ struct BettingPopupView: View {
     let match: MatchData
     let communityId: String
     var odds: MatchWinnerOdds? = nil
+    /// Ist gesetzt → Tipp wird in der Globalen Community gespeichert (statt in Communities).
+    var globalLeague: String? = nil
     var onSaved: (() -> Void)? = nil
 
     @EnvironmentObject var communityManager: CommunityManager
@@ -40,7 +42,7 @@ struct BettingPopupView: View {
     }
 
     private var showsCrossCommunityBanner: Bool {
-        UserSettings.shared.crossCommunityTipping
+        globalLeague == nil && UserSettings.shared.crossCommunityTipping
     }
 
     var matchDateTime: String {
@@ -73,13 +75,22 @@ struct BettingPopupView: View {
                         oddsView(o)
                     }
 
-                    // TEAMS & EINGABE
-                    HStack(spacing: 15) {
+                    // TEAMS & EINGABE — Namen-Zeile (flexibel) + fixe, mittige Eingabe-Zeile,
+                    // damit Felder und Doppelpunkt unabhängig von der Namenslänge zentriert bleiben.
+                    VStack(spacing: 12) {
                         let isNational = nationalTeamLeagueIDs.contains(match.league.id)
-                        teamColumn(name: isNational ? teamNameWithFlag(match.teams.home.name) : match.teams.home.name, tip: $homeTip)
-                        Text(":")
-                            .font(.title).bold().foregroundColor(.gray).padding(.top, 35)
-                        teamColumn(name: isNational ? teamNameWithFlag(match.teams.away.name) : match.teams.away.name, tip: $awayTip)
+
+                        HStack(spacing: 12) {
+                            teamName(isNational ? teamNameWithFlag(match.teams.home.name) : match.teams.home.name)
+                            teamName(isNational ? teamNameWithFlag(match.teams.away.name) : match.teams.away.name)
+                        }
+
+                        HStack(spacing: 12) {
+                            scoreField($homeTip).frame(maxWidth: .infinity)
+                            Text(":")
+                                .font(.title).bold().foregroundColor(.gray)
+                            scoreField($awayTip).frame(maxWidth: .infinity)
+                        }
                     }
                     .padding(.vertical, 6)
 
@@ -240,33 +251,37 @@ struct BettingPopupView: View {
     }
 
     @ViewBuilder
-    private func teamColumn(name: String, tip: Binding<String>) -> some View {
-        VStack(spacing: 8) {
-            Text(name)
-                .font(.system(size: 10, weight: .bold)).foregroundColor(.white).lineLimit(1)
+    private func teamName(_ name: String) -> some View {
+        Text(name)
+            .font(.system(size: 18, weight: .bold)).foregroundColor(.white)
+            .multilineTextAlignment(.center)
+            .lineLimit(2).minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity)
+    }
 
-            TextField("-", text: tip)
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.center)
-                .font(.title.bold())
-                .frame(width: 60, height: 48)
-                .background(Color.oneKickBlack)
-                .cornerRadius(12)
-                .foregroundColor(.oneKickNeon)
-                .toolbar {
-                    ToolbarItemGroup(placement: .keyboard) {
-                        Spacer()
-                        Button("Fertig") {
-                            UIApplication.shared.sendAction(
-                                #selector(UIResponder.resignFirstResponder),
-                                to: nil, from: nil, for: nil
-                            )
-                        }
-                        .foregroundColor(.oneKickNeon)
-                        .fontWeight(.bold)
+    @ViewBuilder
+    private func scoreField(_ tip: Binding<String>) -> some View {
+        TextField("-", text: tip)
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.center)
+            .font(.title.bold())
+            .frame(width: 64, height: 50)
+            .background(Color.oneKickBlack)
+            .cornerRadius(12)
+            .foregroundColor(.oneKickNeon)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Fertig") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
                     }
+                    .foregroundColor(.oneKickNeon)
+                    .fontWeight(.bold)
                 }
-        }
+            }
     }
 
     private func saveBet() {
@@ -279,16 +294,34 @@ struct BettingPopupView: View {
         isSaving = true
         HapticManager.instance.impact(style: .medium)
 
+        // Globaler Modus: Tipp nur in der Globalen Community speichern
+        if let league = globalLeague {
+            Task {
+                try? await GlobalBetManager().saveGlobalBet(
+                    league: league,
+                    fixtureId: match.fixture.id,
+                    homeGoals: home,
+                    awayGoals: away
+                )
+                isPresented = false
+                onSaved?()
+            }
+            return
+        }
+
         let ids: [String] = (showsCrossCommunityBanner && !onlyThisCommunity)
             ? affectedCommunityIds
             : [communityId]
+
+        let kickoff = ISO8601DateFormatter().date(from: match.fixture.date) ?? Date()
 
         Task {
             await betManager.saveBetToMultipleCommunities(
                 fixtureId: match.fixture.id,
                 communityIds: ids,
                 homeGoals: home,
-                awayGoals: away
+                awayGoals: away,
+                kickoff: kickoff
             )
             isPresented = false
             onSaved?()

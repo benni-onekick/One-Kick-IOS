@@ -54,7 +54,7 @@ struct CommunityView: View {
             }
             .sheet(isPresented: $showMenu) {
                 CommunityStartMenu()
-                    .presentationDetents([.height(450)])
+                    .presentationDetents([.height(560)])
                     .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showProfileSheet) { ProfileView() }
@@ -264,6 +264,7 @@ struct GlobalCommunityLeagueCard: View {
 
 struct GlobalCommunityLeaderboardView: View {
     @ObservedObject var vm: GlobalCommunityViewModel
+    var embedded: Bool = false
     @Environment(\.dismiss) var dismiss
     @State private var entries: [GlobalCommunityEntry] = []
     @State private var isLoadingEntries = true
@@ -272,10 +273,35 @@ struct GlobalCommunityLeaderboardView: View {
     var leagueName: String { vm.selectedLeagueForLeaderboard ?? "" }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.oneKickBlack.ignoresSafeArea()
-                if isLoadingEntries {
+        Group {
+            if embedded {
+                content
+            } else {
+                NavigationStack {
+                    content
+                        .navigationTitle(leagueName)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbarColorScheme(.dark, for: .navigationBar)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Schließen") { dismiss() }.foregroundColor(.oneKickNeon)
+                            }
+                        }
+                }
+            }
+        }
+        .task {
+            guard !leagueName.isEmpty else { isLoadingEntries = false; return }
+            entries = await vm.loadLeaderboard(for: leagueName)
+            isLoadingEntries = false
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        ZStack {
+            Color.oneKickBlack.ignoresSafeArea()
+            if isLoadingEntries {
                     ProgressView().tint(.oneKickNeon)
                 } else if entries.isEmpty {
                     VStack(spacing: 12) {
@@ -323,19 +349,5 @@ struct GlobalCommunityLeaderboardView: View {
                     }
                 }
             }
-            .navigationTitle(leagueName)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Schließen") { dismiss() }.foregroundColor(.oneKickNeon)
-                }
-            }
-        }
-        .task {
-            guard !leagueName.isEmpty else { isLoadingEntries = false; return }
-            entries = await vm.loadLeaderboard(for: leagueName)
-            isLoadingEntries = false
         }
     }
-}

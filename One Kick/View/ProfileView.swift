@@ -20,6 +20,7 @@ struct ProfileView: View {
     @State private var showPasswordResetAlert = false
     @State private var passwordResetSent = false
     @State private var photoItem: PhotosPickerItem? = nil
+    @State private var cropItem: CropItem? = nil
     @State private var showDeleteAccountAlert = false
     @State private var isDeletingAccount = false
     @State private var deleteAccountError: String? = nil
@@ -132,7 +133,22 @@ struct ProfileView: View {
                 }
             }
             .onChange(of: photoItem) { _, item in
-                Task { await processPickedPhoto(item) }
+                Task {
+                    guard let item,
+                          let data = try? await item.loadTransferable(type: Data.self),
+                          let uiImage = UIImage(data: data) else { return }
+                    await MainActor.run { cropItem = CropItem(image: uiImage) }
+                }
+            }
+            .fullScreenCover(item: $cropItem) { item in
+                ImageCropView(
+                    image: item.image,
+                    onCancel: { cropItem = nil },
+                    onCrop: { cropped in
+                        cropItem = nil
+                        saveProfilePhoto(cropped)
+                    }
+                )
             }
 
             VStack(spacing: 4) {
@@ -289,6 +305,11 @@ struct ProfileView: View {
                     rowContent(title: lm.t("profile.notifications"), icon: "bell.fill")
                 }
                 .buttonStyle(.plain)
+                rowDivider
+                NavigationLink(destination: PointsExplanationView()) {
+                    rowContent(title: "Punkte-Erklärung", icon: "info.circle.fill")
+                }
+                .buttonStyle(.plain)
             }
             .background(Color.oneKickDarkGray)
             .cornerRadius(16)
@@ -432,33 +453,12 @@ struct ProfileView: View {
             .padding(.leading, 56)
     }
 
-    private func processPickedPhoto(_ item: PhotosPickerItem?) async {
-        guard let item else { return }
-        guard let data = try? await item.loadTransferable(type: Data.self),
-              let uiImage = UIImage(data: data) else { return }
-
-        // Auf 120×120px verkleinern und als JPEG komprimieren (~3-8KB)
+    // Bereits quadratisch zugeschnittenes Bild auf 120×120px verkleinern + als JPEG speichern.
+    private func saveProfilePhoto(_ croppedImage: UIImage) {
         let size = CGSize(width: 120, height: 120)
         let renderer = UIGraphicsImageRenderer(size: size)
         let square = renderer.image { _ in
-            let side = min(uiImage.size.width, uiImage.size.height)
-            let cropOrigin = CGPoint(
-                x: (uiImage.size.width - side) / 2,
-                y: (uiImage.size.height - side) / 2
-            )
-            let cropRect = CGRect(origin: cropOrigin, size: CGSize(width: side, height: side))
-            guard let cgImage = uiImage.cgImage?.cropping(to:
-                CGRect(x: cropOrigin.x * uiImage.scale,
-                       y: cropOrigin.y * uiImage.scale,
-                       width: side * uiImage.scale,
-                       height: side * uiImage.scale))
-            else {
-                uiImage.draw(in: CGRect(origin: .zero, size: size))
-                return
-            }
-            UIImage(cgImage: cgImage, scale: uiImage.scale, orientation: uiImage.imageOrientation)
-                .draw(in: CGRect(origin: .zero, size: size))
-            _ = cropRect
+            croppedImage.draw(in: CGRect(origin: .zero, size: size))
         }
         guard let jpeg = square.jpegData(compressionQuality: 0.6) else { return }
         userSettings.photoBase64 = jpeg.base64EncodedString()
@@ -526,7 +526,11 @@ struct NotificationSettingsView: View {
                     }
                 } else {
                     Task {
-                        _ = await NotificationManager.shared.requestPermission()
+                        let granted = await NotificationManager.shared.requestPermission()
+                        if granted {
+                            ReminderInterval.seedDefaultIfNeeded()
+                            selectedMinutes = ReminderInterval.load()
+                        }
                         await refreshStatus()
                     }
                 }
@@ -564,6 +568,7 @@ struct NotificationSettingsView: View {
                             Spacer()
                         }
                         .padding(.horizontal, 16).padding(.vertical, 14)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     if i < ReminderInterval.allCases.count - 1 {

@@ -25,6 +25,9 @@ struct BonusScoringEngine {
         guard !user.isEmpty, !correct.isEmpty else { return 0 }
 
         switch category {
+        case "Sieger tippen":
+            return user.lowercased() == correct.lowercased() ? 20 : 0
+
         case "Torschützenkönig",
              "Meiste Vorlagen",
              "Meiste Tore (Team)",
@@ -44,8 +47,24 @@ struct BonusScoringEngine {
             return scoreMultiPick(user: user, correct: correct, ptsEach: 10)
 
         default:
+            if category.hasPrefix("WM Gruppe ") {
+                return scoreWmGroup(user: user, correct: correct)
+            }
             return 0
         }
+    }
+
+    /// WM-Gruppen: 2 Punkte pro korrekt platzierter Nation
+    private static func scoreWmGroup(user: String, correct: String) -> Int {
+        let u = user.components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+        let c = correct.components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+        var pts = 0
+        for (i, team) in c.enumerated() {
+            if i < u.count && u[i] == team { pts += 2 }
+        }
+        return pts
     }
 
     private static func scoreEndtabelle(user: String, correct: String) -> Int {

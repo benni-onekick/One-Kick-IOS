@@ -36,10 +36,16 @@ class APIFootballService {
     private static var dateRangeCache: [String: (matches: [MatchData], date: Date)] = [:]
     private static let dateRangeCacheTTL: TimeInterval     = 6 * 3600   // In-Memory: 6h
     private static let diskCacheTTL: TimeInterval          = 24 * 3600  // Disk: 24h
+    // Application Support statt Caches: iOS leert Caches bei Updates/Speicherdruck →
+    // Saison-Fixtures würden nach jedem Update verloren gehen. Application Support persistiert.
     private static let diskCacheDir: URL = {
-        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("OneKickMatchCache", isDirectory: true)
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        var dir = base.appendingPathComponent("OneKickMatchCache", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        // Regenerierbare Cache-Daten nicht ins iCloud-Backup aufnehmen
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? dir.setResourceValues(values)
         return dir
     }()
 
@@ -50,6 +56,44 @@ class APIFootballService {
     // In-Flight-Deduplizierung: verhindert doppelte API-Calls wenn StartseiteView + TippenView
     // gleichzeitig dieselbe Liga laden (beide würden sonst Cache-Miss sehen und Rate-Limit auslösen)
     @MainActor private static var inFlightUpcoming: [Int: Task<[MatchData], Never>] = [:]
+
+    /// Leert alle season_v2_* Einträge aus dem In-Memory-dateRangeCache.
+    /// Muss beim App-Start aufgerufen werden damit neue Saison-Daten vom API geladen werden.
+    static func clearSeasonMemoryCaches() {
+        let keys = dateRangeCache.keys.filter { $0.hasPrefix("season_v2_") }
+        for key in keys { dateRangeCache.removeValue(forKey: key) }
+    }
+
+    /// Leert ALLE In-Memory- und Disk-Caches vollständig.
+    static func clearAllDiskCaches() {
+        dateRangeCache.removeAll()
+        roundCache.removeAll()
+        upcomingCache.removeAll()
+        allRoundsCache.removeAll()
+        if let files = try? FileManager.default.contentsOfDirectory(atPath: diskCacheDir.path) {
+            for file in files {
+                try? FileManager.default.removeItem(at: diskCacheDir.appendingPathComponent(file))
+            }
+        }
+    }
+
+    /// Holt aktuelle Spieldaten direkt für spezifische Fixture-IDs (wie Android fetchFixturesByIds).
+    /// Kein Cache – immer frische Daten für fehlende Bets.
+    func fetchFixturesByIds(_ ids: [Int]) async -> [MatchData] {
+        guard !ids.isEmpty else { return [] }
+        var all: [MatchData] = []
+        for chunkStart in stride(from: 0, to: ids.count, by: 20) {
+            let slice = Array(ids[chunkStart..<min(chunkStart + 20, ids.count)])
+            let idsStr = slice.map { String($0) }.joined(separator: "-")
+            var comp = URLComponents(string: "\(baseURL)/fixtures")!
+            comp.queryItems = [URLQueryItem(name: "ids", value: idsStr)]
+            guard let url = comp.url,
+                  let data = try? await performRequest(url: url),
+                  let resp = try? JSONDecoder().decode(APIFixturesResponse.self, from: data) else { continue }
+            all += resp.response
+        }
+        return all
+    }
 
     // AllRounds-Cache (STATISCH, 24h) – Saisonrunden ändern sich nie → kein API-Call nötig
     private static var allRoundsCache: [Int: (rounds: [String], date: Date)] = [:]
@@ -74,10 +118,11 @@ class APIFootballService {
     ]
 
     private func isPlayoffRound(_ round: String, leagueID: Int = 0) -> Bool {
-        if !LeagueMapper.hasRelegationPlayoff(leagueID: leagueID) {
-            if intraLeagueRoundPatterns.contains(where: { round.localizedCaseInsensitiveContains($0) }) {
-                return false
-            }
+        // Ligen ohne ligaübergreifenden Relegations-Playoff (z.B. Saudi, MLS) haben keine
+        // "echten" Playoff-Runden die herausgefiltert werden sollen.
+        if leagueID != 0 && !LeagueMapper.hasRelegationPlayoff(leagueID: leagueID) { return false }
+        if intraLeagueRoundPatterns.contains(where: { round.localizedCaseInsensitiveContains($0) }) {
+            return false
         }
         return playoffKeywords.contains { round.localizedCaseInsensitiveContains($0) }
     }
@@ -119,6 +164,50 @@ class APIFootballService {
         return (result.round, result.matchday)
     }
 
+    /// Wählt aus den Saison-Fixtures die aktuell anzuzeigende Runde.
+    /// Priorität: 1) Runde mit Live-Spiel  2) letzte begonnene Runde (mit 24-h-Regel zum
+    /// Weiterschalten auf die nächste)  3) erste noch nicht begonnene Runde.
+    /// Ligaübergreifende Playoffs werden ausgeschlossen, liga-interne Zweitphasen bleiben.
+    private func pickCurrentRound(from fixtures: [MatchData], leagueID: Int) -> String? {
+        let live:     Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
+        let finished: Set<String> = ["FT", "AET", "PEN", "AWD", "WO"]
+        let iso = ISO8601DateFormatter()
+
+        let relevant = fixtures.filter { !isPlayoffRound($0.league.round ?? "", leagueID: leagueID) }
+        guard !relevant.isEmpty else { return nil }
+
+        let byRound = Dictionary(grouping: relevant) { $0.league.round ?? "" }
+        func earliest(_ round: String) -> Date {
+            byRound[round]?.compactMap { iso.date(from: $0.fixture.date) }.min() ?? .distantFuture
+        }
+        let ordered = byRound.keys.sorted { earliest($0) < earliest($1) }
+
+        // a) Runde mit einem laufenden Spiel
+        if let liveRound = ordered.first(where: { r in
+            byRound[r]?.contains { live.contains($0.fixture.status.short) } ?? false
+        }) { return liveRound }
+
+        // b) letzte bereits begonnene Runde (irgendein Spiel ≠ NS/TBD)
+        let startedRounds = ordered.filter { r in
+            byRound[r]?.contains { !["NS", "TBD"].contains($0.fixture.status.short) } ?? false
+        }
+        guard let last = startedRounds.last, let lastMatches = byRound[last] else {
+            return ordered.first   // c) noch keine Runde begonnen → erste Runde
+        }
+
+        let allFinished = lastMatches.allSatisfy { finished.contains($0.fixture.status.short) }
+        if allFinished {
+            let lastKickoff = lastMatches.compactMap { iso.date(from: $0.fixture.date) }.max() ?? .distantPast
+            // Neuer Spieltag erst 24 h nach Abschluss des letzten Spiels — sonst aktueller bleibt
+            if Date() >= lastKickoff.addingTimeInterval(24 * 3600),
+               let idx = ordered.firstIndex(of: last), idx + 1 < ordered.count {
+                return ordered[idx + 1]
+            }
+            return last
+        }
+        return last   // begonnen, aber noch nicht alle Spiele beendet (z.B. Verlegung)
+    }
+
     func determineDisplayRoundWithMatches(
         for leagueID: Int,
         maxMatchday: Int
@@ -128,6 +217,20 @@ class APIFootballService {
             return (c.round, c.matchday, c.matches)
         }
 
+        // Datengetrieben aus den vollständigen Saisondaten — zuverlässiger als der
+        // API-"current=true"-Endpoint (löst falsche/leere Spieltage am Saisonende).
+        let seasonFixtures = await fetchAllSeasonFixtures(for: leagueID)
+        if let round = pickCurrentRound(from: seasonFixtures, leagueID: leagueID) {
+            let roundMatches = seasonFixtures
+                .filter { ($0.league.round ?? "") == round }
+                .sorted { $0.fixture.date < $1.fixture.date }
+            let dataResult = (round, extractMatchday(from: round), roundMatches)
+            Self.roundCache[leagueID] = (dataResult.0, dataResult.1, dataResult.2, Date())
+            UserDefaults.standard.set(["r": dataResult.0, "md": dataResult.1], forKey: "lmd_\(leagueID)")
+            return dataResult
+        }
+
+        // ── Fallback (Rate-Limit / keine Saisondaten): bisherige Runden-Logik ──
         let result: (round: String, matchday: Int, matches: [MatchData])
 
         guard let currentRound = await fetchCurrentRound(for: leagueID) else {
@@ -171,7 +274,7 @@ class APIFootballService {
             if let url = batchComp.url,
                let data = try? await performRequest(url: url),
                let resp = try? JSONDecoder().decode(APIFixturesResponse.self, from: data) {
-                let regular = resp.response.filter { !isPlayoffRound($0.league.round ?? "") }
+                let regular = resp.response.filter { !isPlayoffRound($0.league.round ?? "", leagueID: leagueID) }
                 let byRound = Dictionary(grouping: regular) { $0.league.round ?? "" }
                 if let best = byRound.max(by: { $0.value.count < $1.value.count }),
                    best.value.count > 1 {
@@ -470,6 +573,7 @@ class APIFootballService {
         let valid: Set<String> = ["NS", "TBD", "1H", "2H", "HT", "ET", "P", "LIVE"]
         let filtered = resp.response.filter { match in
             guard valid.contains(match.fixture.status.short) else { return false }
+            guard LeagueMapper.hasRelegationPlayoff(leagueID: leagueID) else { return true }
             return !isPlayoffRound(match.league.round ?? "", leagueID: leagueID)
         }
         // Singleton-Runden-Filter: Runden mit nur 1 Spiel entfernen wenn andere Runden
@@ -652,15 +756,24 @@ class APIFootballService {
                 return kickoff < threeHoursAgo
             }
         }
+        // Eingefrorene Live-Scores: Match war Live als gecacht, Anpfiff >3h → Endstand fehlt
+        func hasStaleLive(_ matches: [MatchData]) -> Bool {
+            let live: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
+            return matches.contains { m in
+                guard live.contains(m.fixture.status.short) else { return false }
+                guard let kickoff = iso.date(from: m.fixture.date) else { return false }
+                return kickoff < threeHoursAgo
+            }
+        }
 
         if let entry = Self.dateRangeCache[cacheKey],
            Date().timeIntervalSince(entry.date) < Self.dateRangeCacheTTL,
-           !hasStaleNS(entry.matches) {
+           !hasStaleNS(entry.matches), !hasStaleLive(entry.matches) {
             return entry.matches
         }
         if let data = try? Data(contentsOf: diskURL),
            let cached = try? JSONDecoder().decode([MatchData].self, from: data) {
-            if !hasStaleNS(cached) {
+            if !hasStaleNS(cached) && !hasStaleLive(cached) {
                 Self.dateRangeCache[cacheKey] = (cached, Date())
                 return cached
             }
@@ -897,7 +1010,7 @@ class APIFootballService {
             let liveStatuses: Set<String> = ["1H", "2H", "HT", "ET", "P", "LIVE"]
             if let live = resp.response.first(where: {
                 liveStatuses.contains($0.fixture.status.short) &&
-                !isPlayoffRound($0.league.round ?? "")
+                !isPlayoffRound($0.league.round ?? "", leagueID: leagueID)
             }) {
                 return live.league.round
             }
@@ -915,7 +1028,7 @@ class APIFootballService {
            let data = try? await performRequest(url: url),
            let resp = try? JSONDecoder().decode(APIRoundsResponse.self, from: data),
            let round = resp.response.first,
-           !isPlayoffRound(round) {
+           !isPlayoffRound(round, leagueID: leagueID) {
             return round
         }
 
@@ -933,7 +1046,7 @@ class APIFootballService {
         if let url = comp.url,
            let data = try? await performRequest(url: url),
            let resp = try? JSONDecoder().decode(APIFixturesResponse.self, from: data) {
-            let regular = resp.response.filter { !isPlayoffRound($0.league.round ?? "") }
+            let regular = resp.response.filter { !isPlayoffRound($0.league.round ?? "", leagueID: leagueID) }
             let sorted = regular.sorted { $0.fixture.date < $1.fixture.date }
             let finishedStatuses: Set<String> = ["FT", "AET", "PEN", "AWD", "WO"]
             if let last = sorted.last(where: { finishedStatuses.contains($0.fixture.status.short) }) {

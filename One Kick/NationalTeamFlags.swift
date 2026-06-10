@@ -41,10 +41,10 @@ let nationalTeamCodes: [String: String] = [
     "Chile": "CL", "Ecuador": "EC", "Paraguay": "PY", "Peru": "PE",
     "Venezuela": "VE", "Bolivia": "BO",
     // Nordamerika & Karibik
-    "United States": "US", "Mexico": "MX", "Canada": "CA", "Panama": "PA",
+    "United States": "US", "USA": "US", "Mexico": "MX", "Canada": "CA", "Panama": "PA",
     "Costa Rica": "CR", "Honduras": "HN", "Jamaica": "JM", "Cuba": "CU",
     "Trinidad and Tobago": "TT", "Haiti": "HT", "Guatemala": "GT",
-    "El Salvador": "SV", "Nicaragua": "NI",
+    "El Salvador": "SV", "Nicaragua": "NI", "Curacao": "CW", "Curaçao": "CW",
     // Afrika
     "Morocco": "MA", "Senegal": "SN", "Egypt": "EG", "Nigeria": "NG",
     "Ghana": "GH", "Tunisia": "TN", "Cameroon": "CM", "Algeria": "DZ",
@@ -67,8 +67,16 @@ let nationalTeamCodes: [String: String] = [
     "New Zealand": "NZ", "Fiji": "FJ",
 ]
 
+/// Sonderflaggen für UK-Unterregionen (eigene Flagge statt 🇬🇧) – Unicode-Tag-Sequenzen.
+private let subdivisionFlags: [String: String] = [
+    "England":  "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
+    "Scotland": "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}",
+    "Wales":    "\u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}",
+]
+
 /// Gibt das Flaggen-Emoji für einen Teamnamen zurück (leer wenn unbekannt)
 func nationalTeamFlag(for teamName: String) -> String {
+    if let sub = subdivisionFlags[teamName] { return sub }
     guard let code = nationalTeamCodes[teamName] else { return "" }
     return flagEmoji(code)
 }
@@ -209,32 +217,205 @@ let frenchTeamNames: [String: String] = [
     "Curacao": "Cura\u{00e7}ao",
 ]
 
+let italianTeamNames: [String: String] = [
+    "Germany": "Germania", "France": "Francia", "Spain": "Spagna",
+    "England": "Inghilterra", "Portugal": "Portogallo", "Netherlands": "Paesi Bassi",
+    "Belgium": "Belgio", "Croatia": "Croazia", "Italy": "Italia",
+    "Switzerland": "Svizzera", "Austria": "Austria", "Denmark": "Danimarca",
+    "Sweden": "Svezia", "Norway": "Norvegia", "Finland": "Finlandia",
+    "Poland": "Polonia", "Czech Republic": "Rep. Ceca", "Czechia": "Rep. Ceca",
+    "Hungary": "Ungheria", "Romania": "Romania", "Slovakia": "Slovacchia",
+    "Slovenia": "Slovenia", "Serbia": "Serbia", "Albania": "Albania",
+    "Ukraine": "Ucraina", "Scotland": "Scozia", "Wales": "Galles",
+    "Turkey": "Turchia", "Türkiye": "Turchia", "Greece": "Grecia",
+    "Georgia": "Georgia", "Bulgaria": "Bulgaria", "Iceland": "Islanda",
+    "Bosnia & Herzegovina": "Bosnia-Erzegovina", "Montenegro": "Montenegro",
+    "North Macedonia": "Macedonia del Nord", "Kosovo": "Kosovo",
+    "Armenia": "Armenia", "Azerbaijan": "Azerbaigian",
+    "Kazakhstan": "Kazakistan", "Lithuania": "Lituania",
+    "Latvia": "Lettonia", "Estonia": "Estonia", "Luxembourg": "Lussemburgo",
+    "Cyprus": "Cipro", "Faroe Islands": "Isole Fær Øer", "Belarus": "Bielorussia",
+    "Moldova": "Moldavia", "Russia": "Russia", "Israel": "Israele",
+    "Malta": "Malta", "Gibraltar": "Gibilterra", "Andorra": "Andorra",
+    "San Marino": "San Marino", "Liechtenstein": "Liechtenstein",
+    "Brazil": "Brasile", "Argentina": "Argentina", "Colombia": "Colombia",
+    "Uruguay": "Uruguay", "Chile": "Cile", "Ecuador": "Ecuador",
+    "Paraguay": "Paraguay", "Peru": "Perù", "Venezuela": "Venezuela",
+    "Bolivia": "Bolivia",
+    "United States": "USA", "Mexico": "Messico", "Canada": "Canada",
+    "Panama": "Panama", "Costa Rica": "Costa Rica", "Honduras": "Honduras",
+    "Jamaica": "Giamaica", "Cuba": "Cuba",
+    "Trinidad and Tobago": "Trinidad e Tobago", "Haiti": "Haiti",
+    "Guatemala": "Guatemala", "El Salvador": "El Salvador", "Nicaragua": "Nicaragua",
+    "Morocco": "Marocco", "Senegal": "Senegal", "Egypt": "Egitto",
+    "Nigeria": "Nigeria", "Ghana": "Ghana", "Tunisia": "Tunisia",
+    "Cameroon": "Camerun", "Algeria": "Algeria",
+    "Ivory Coast": "Costa d'Avorio", "Cote d'Ivoire": "Costa d'Avorio",
+    "South Africa": "Sudafrica", "DR Congo": "RD Congo", "Congo DR": "RD Congo",
+    "Cape Verde Islands": "Capo Verde", "Cape Verde": "Capo Verde",
+    "Angola": "Angola", "Mali": "Mali", "Guinea": "Guinea",
+    "Benin": "Benin", "Zambia": "Zambia", "Uganda": "Uganda",
+    "Kenya": "Kenya", "Burkina Faso": "Burkina Faso",
+    "Japan": "Giappone", "South Korea": "Corea del Sud", "Korea Republic": "Corea del Sud",
+    "Australia": "Australia", "Saudi Arabia": "Arabia Saudita",
+    "Iran": "Iran", "Qatar": "Qatar", "Iraq": "Iraq",
+    "UAE": "Emirati Arabi Uniti", "United Arab Emirates": "Emirati Arabi Uniti",
+    "Uzbekistan": "Uzbekistan", "Indonesia": "Indonesia",
+    "China PR": "Cina", "China": "Cina", "India": "India",
+    "Thailand": "Thailandia", "Vietnam": "Vietnam", "Jordan": "Giordania",
+    "Bahrain": "Bahrein", "Kuwait": "Kuwait", "Oman": "Oman",
+    "Syria": "Siria", "Lebanon": "Libano", "Philippines": "Filippine",
+    "New Zealand": "Nuova Zelanda", "Fiji": "Figi",
+]
+
+let spanishTeamNames: [String: String] = [
+    "Germany": "Alemania", "France": "Francia", "Spain": "España",
+    "England": "Inglaterra", "Portugal": "Portugal", "Netherlands": "Países Bajos",
+    "Belgium": "Bélgica", "Croatia": "Croacia", "Italy": "Italia",
+    "Switzerland": "Suiza", "Austria": "Austria", "Denmark": "Dinamarca",
+    "Sweden": "Suecia", "Norway": "Noruega", "Finland": "Finlandia",
+    "Poland": "Polonia", "Czech Republic": "República Checa", "Czechia": "Chequia",
+    "Hungary": "Hungría", "Romania": "Rumanía", "Slovakia": "Eslovaquia",
+    "Slovenia": "Eslovenia", "Serbia": "Serbia", "Albania": "Albania",
+    "Ukraine": "Ucrania", "Scotland": "Escocia", "Wales": "Gales",
+    "Turkey": "Turquía", "Türkiye": "Turquía", "Greece": "Grecia",
+    "Georgia": "Georgia", "Bulgaria": "Bulgaria", "Iceland": "Islandia",
+    "Bosnia & Herzegovina": "Bosnia y Herzegovina", "Montenegro": "Montenegro",
+    "North Macedonia": "Macedonia del Norte", "Kosovo": "Kosovo",
+    "Armenia": "Armenia", "Azerbaijan": "Azerbaiyán",
+    "Kazakhstan": "Kazajistán", "Lithuania": "Lituania",
+    "Latvia": "Letonia", "Estonia": "Estonia", "Luxembourg": "Luxemburgo",
+    "Cyprus": "Chipre", "Faroe Islands": "Islas Feroe", "Belarus": "Bielorrusia",
+    "Moldova": "Moldavia", "Russia": "Rusia", "Israel": "Israel",
+    "Malta": "Malta", "Gibraltar": "Gibraltar", "Andorra": "Andorra",
+    "San Marino": "San Marino", "Liechtenstein": "Liechtenstein",
+    "Brazil": "Brasil", "Argentina": "Argentina", "Colombia": "Colombia",
+    "Uruguay": "Uruguay", "Chile": "Chile", "Ecuador": "Ecuador",
+    "Paraguay": "Paraguay", "Peru": "Perú", "Venezuela": "Venezuela",
+    "Bolivia": "Bolivia",
+    "United States": "EE. UU.", "Mexico": "México", "Canada": "Canadá",
+    "Panama": "Panamá", "Costa Rica": "Costa Rica", "Honduras": "Honduras",
+    "Jamaica": "Jamaica", "Cuba": "Cuba",
+    "Trinidad and Tobago": "Trinidad y Tobago", "Haiti": "Haití",
+    "Guatemala": "Guatemala", "El Salvador": "El Salvador", "Nicaragua": "Nicaragua",
+    "Morocco": "Marruecos", "Senegal": "Senegal", "Egypt": "Egipto",
+    "Nigeria": "Nigeria", "Ghana": "Ghana", "Tunisia": "Túnez",
+    "Cameroon": "Camerún", "Algeria": "Argelia",
+    "Ivory Coast": "Costa de Marfil", "Cote d'Ivoire": "Costa de Marfil",
+    "South Africa": "Sudáfrica", "DR Congo": "RD Congo", "Congo DR": "RD Congo",
+    "Cape Verde Islands": "Cabo Verde", "Cape Verde": "Cabo Verde",
+    "Angola": "Angola", "Mali": "Malí", "Guinea": "Guinea",
+    "Benin": "Benín", "Zambia": "Zambia", "Uganda": "Uganda",
+    "Kenya": "Kenia", "Burkina Faso": "Burkina Faso",
+    "Japan": "Japón", "South Korea": "Corea del Sur", "Korea Republic": "Corea del Sur",
+    "Australia": "Australia", "Saudi Arabia": "Arabia Saudí",
+    "Iran": "Irán", "Qatar": "Catar", "Iraq": "Irak",
+    "UAE": "Emiratos Árabes Unidos", "United Arab Emirates": "Emiratos Árabes Unidos",
+    "Uzbekistan": "Uzbekistán", "Indonesia": "Indonesia",
+    "China PR": "China", "China": "China", "India": "India",
+    "Thailand": "Tailandia", "Vietnam": "Vietnam", "Jordan": "Jordania",
+    "Bahrain": "Baréin", "Kuwait": "Kuwait", "Oman": "Omán",
+    "Syria": "Siria", "Lebanon": "Líbano", "Philippines": "Filipinas",
+    "New Zealand": "Nueva Zelanda", "Fiji": "Fiyi",
+]
+
+let danishTeamNames: [String: String] = [
+    "Germany": "Tyskland", "France": "Frankrig", "Spain": "Spanien",
+    "England": "England", "Portugal": "Portugal", "Netherlands": "Holland",
+    "Belgium": "Belgien", "Croatia": "Kroatien", "Italy": "Italien",
+    "Switzerland": "Schweiz", "Austria": "Østrig", "Denmark": "Danmark",
+    "Sweden": "Sverige", "Norway": "Norge", "Finland": "Finland",
+    "Poland": "Polen", "Czech Republic": "Tjekkiet", "Czechia": "Tjekkiet",
+    "Hungary": "Ungarn", "Romania": "Rumænien", "Slovakia": "Slovakiet",
+    "Slovenia": "Slovenien", "Serbia": "Serbien", "Albania": "Albanien",
+    "Ukraine": "Ukraine", "Scotland": "Skotland", "Wales": "Wales",
+    "Turkey": "Tyrkiet", "Türkiye": "Tyrkiet", "Greece": "Grækenland",
+    "Georgia": "Georgien", "Bulgaria": "Bulgarien", "Iceland": "Island",
+    "Bosnia & Herzegovina": "Bosnien-Hercegovina", "Montenegro": "Montenegro",
+    "North Macedonia": "Nordmakedonien", "Kosovo": "Kosovo",
+    "Armenia": "Armenien", "Azerbaijan": "Aserbajdsjan",
+    "Kazakhstan": "Kasakhstan", "Lithuania": "Litauen",
+    "Latvia": "Letland", "Estonia": "Estland", "Luxembourg": "Luxembourg",
+    "Cyprus": "Cypern", "Faroe Islands": "Færøerne", "Belarus": "Hviderusland",
+    "Moldova": "Moldova", "Russia": "Rusland", "Israel": "Israel",
+    "Malta": "Malta", "Gibraltar": "Gibraltar", "Andorra": "Andorra",
+    "San Marino": "San Marino", "Liechtenstein": "Liechtenstein",
+    "Brazil": "Brasilien", "Argentina": "Argentina", "Colombia": "Colombia",
+    "Uruguay": "Uruguay", "Chile": "Chile", "Ecuador": "Ecuador",
+    "Paraguay": "Paraguay", "Peru": "Peru", "Venezuela": "Venezuela",
+    "Bolivia": "Bolivia",
+    "United States": "USA", "Mexico": "Mexico", "Canada": "Canada",
+    "Panama": "Panama", "Costa Rica": "Costa Rica", "Honduras": "Honduras",
+    "Jamaica": "Jamaica", "Cuba": "Cuba",
+    "Trinidad and Tobago": "Trinidad og Tobago", "Haiti": "Haiti",
+    "Guatemala": "Guatemala", "El Salvador": "El Salvador", "Nicaragua": "Nicaragua",
+    "Morocco": "Marokko", "Senegal": "Senegal", "Egypt": "Egypten",
+    "Nigeria": "Nigeria", "Ghana": "Ghana", "Tunisia": "Tunesien",
+    "Cameroon": "Cameroun", "Algeria": "Algeriet",
+    "Ivory Coast": "Elfenbenskysten", "Cote d'Ivoire": "Elfenbenskysten",
+    "South Africa": "Sydafrika", "DR Congo": "DR Congo", "Congo DR": "DR Congo",
+    "Cape Verde Islands": "Kap Verde", "Cape Verde": "Kap Verde",
+    "Angola": "Angola", "Mali": "Mali", "Guinea": "Guinea",
+    "Benin": "Benin", "Zambia": "Zambia", "Uganda": "Uganda",
+    "Kenya": "Kenya", "Burkina Faso": "Burkina Faso",
+    "Japan": "Japan", "South Korea": "Sydkorea", "Korea Republic": "Sydkorea",
+    "Australia": "Australien", "Saudi Arabia": "Saudi-Arabien",
+    "Iran": "Iran", "Qatar": "Qatar", "Iraq": "Irak",
+    "UAE": "Forenede Arabiske Emirater", "United Arab Emirates": "Forenede Arabiske Emirater",
+    "Uzbekistan": "Usbekistan", "Indonesia": "Indonesien",
+    "China PR": "Kina", "China": "Kina", "India": "Indien",
+    "Thailand": "Thailand", "Vietnam": "Vietnam", "Jordan": "Jordan",
+    "Bahrain": "Bahrain", "Kuwait": "Kuwait", "Oman": "Oman",
+    "Syria": "Syrien", "Lebanon": "Libanon", "Philippines": "Filippinerne",
+    "New Zealand": "New Zealand", "Fiji": "Fiji",
+]
+
 func localizedTeamName(_ apiName: String) -> String {
     switch LanguageManager.shared.currentLanguage {
     case "de": return germanTeamNames[apiName] ?? apiName
     case "nl": return dutchTeamNames[apiName] ?? apiName
     case "fr": return frenchTeamNames[apiName] ?? apiName
+    case "it": return italianTeamNames[apiName] ?? apiName
+    case "es": return spanishTeamNames[apiName] ?? apiName
+    case "da": return danishTeamNames[apiName] ?? apiName
     default:   return apiName  // "en" → Original API-Name
     }
 }
 
-/// API-Rundenname → deutscher Anzeigename (WM/EM/KO-Runden)
+/// API-Rundenname → lokalisierter Anzeigename (WM/EM/KO-Runden), je nach eingestellter Sprache.
 func localizedRoundName(_ round: String) -> String {
+    let lang = LanguageManager.shared.currentLanguage
+
+    // Gruppenphase (ggf. mit Rundennummer)
     if round.lowercased().hasPrefix("group stage") {
         let num = round.components(separatedBy: CharacterSet.decimalDigits.inverted)
             .compactMap { Int($0) }.last
-        return num != nil ? "Gruppenphase Runde \(num!)" : "Gruppenphase"
+        let groupBase: String
+        let groupRound: (Int) -> String
+        switch lang {
+        case "en": groupBase = "Group Stage";    groupRound = { "Group Stage Round \($0)" }
+        case "fr": groupBase = "Phase de groupes"; groupRound = { "Phase de groupes - Journée \($0)" }
+        case "nl": groupBase = "Groepsfase";      groupRound = { "Groepsfase ronde \($0)" }
+        case "it": groupBase = "Fase a gironi";   groupRound = { "Fase a gironi - Turno \($0)" }
+        case "es": groupBase = "Fase de grupos";  groupRound = { "Fase de grupos - Jornada \($0)" }
+        case "da": groupBase = "Gruppespil";      groupRound = { "Gruppespil runde \($0)" }
+        default:   groupBase = "Gruppenphase";    groupRound = { "Gruppenphase Runde \($0)" }
+        }
+        return num != nil ? groupRound(num!) : groupBase
     }
-    let map: [String: String] = [
-        "Round of 32": "Runde der 32",
-        "Round of 16": "Achtelfinale",
-        "Quarter-finals": "Viertelfinale",
-        "Semi-finals": "Halbfinale",
-        "Final": "Finale",
-        "3rd Place Final": "Spiel um Platz 3",
-        "Round of 48": "Gruppenphase",
-        "Regular Season": "Hauptrunde",
+
+    // K.-o.-Runden: GEORDNETE Liste — spezifischere Begriffe (die "Final" enthalten) zuerst,
+    // sonst würde z.B. "Semi-finals" fälschlich auf den "Final"-Eintrag matchen.
+    let maps: [String: [(key: String, value: String)]] = [
+        "de": [("Round of 32","Runde der 32"), ("Round of 16","Achtelfinale"), ("Quarter-finals","Viertelfinale"), ("Semi-finals","Halbfinale"), ("3rd Place Final","Spiel um Platz 3"), ("Final","Finale"), ("Round of 48","Gruppenphase"), ("Regular Season","Hauptrunde")],
+        "en": [("Round of 32","Round of 32"), ("Round of 16","Round of 16"), ("Quarter-finals","Quarter-finals"), ("Semi-finals","Semi-finals"), ("3rd Place Final","Third-place play-off"), ("Final","Final"), ("Round of 48","Group Stage"), ("Regular Season","Regular Season")],
+        "fr": [("Round of 32","Seizièmes de finale"), ("Round of 16","Huitièmes de finale"), ("Quarter-finals","Quarts de finale"), ("Semi-finals","Demi-finales"), ("3rd Place Final","Match pour la 3e place"), ("Final","Finale"), ("Round of 48","Phase de groupes"), ("Regular Season","Saison régulière")],
+        "nl": [("Round of 32","Zestiende finale"), ("Round of 16","Achtste finale"), ("Quarter-finals","Kwartfinale"), ("Semi-finals","Halve finale"), ("3rd Place Final","Troostfinale"), ("Final","Finale"), ("Round of 48","Groepsfase"), ("Regular Season","Reguliere seizoen")],
+        "it": [("Round of 32","Sedicesimi di finale"), ("Round of 16","Ottavi di finale"), ("Quarter-finals","Quarti di finale"), ("Semi-finals","Semifinali"), ("3rd Place Final","Finale 3º posto"), ("Final","Finale"), ("Round of 48","Fase a gironi"), ("Regular Season","Stagione regolare")],
+        "es": [("Round of 32","Dieciseisavos de final"), ("Round of 16","Octavos de final"), ("Quarter-finals","Cuartos de final"), ("Semi-finals","Semifinales"), ("3rd Place Final","Partido por el tercer puesto"), ("Final","Final"), ("Round of 48","Fase de grupos"), ("Regular Season","Temporada regular")],
+        "da": [("Round of 32","1/16-finale"), ("Round of 16","1/8-finale"), ("Quarter-finals","Kvartfinale"), ("Semi-finals","Semifinale"), ("3rd Place Final","Bronzekamp"), ("Final","Finale"), ("Round of 48","Gruppespil"), ("Regular Season","Grundspil")],
     ]
+    let map = maps[lang] ?? maps["de"]!
     return map.first(where: { round.localizedCaseInsensitiveContains($0.key) })?.value ?? round
 }
 

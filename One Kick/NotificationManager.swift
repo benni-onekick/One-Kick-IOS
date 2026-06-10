@@ -72,6 +72,11 @@ enum ReminderInterval: Int, CaseIterable, Identifiable {
         UserDefaults.standard.set(selected.sorted().map { "\($0)" }.joined(separator: ","),
                                   forKey: storageKey)
     }
+
+    // Standard nach erstmaligem Erlauben: „1 Stunde vorher" – nur wenn noch keine Auswahl existiert.
+    static func seedDefaultIfNeeded() {
+        if load().isEmpty { save([ReminderInterval.h1.rawValue]) }
+    }
 }
 
 class NotificationManager {

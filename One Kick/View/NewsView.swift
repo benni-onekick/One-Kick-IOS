@@ -12,8 +12,10 @@ struct NewsView: View {
     @EnvironmentObject var communityManager: CommunityManager
     @EnvironmentObject var lm: LanguageManager
     @State private var showProfileSheet = false
-    @State private var selectedTab: NewsTab = .news
+    @State private var selectedTab: NewsTab = .polls
     @State private var favoritesOnly = false
+    @StateObject private var pollVM = GlobalPollViewModel()
+    @State private var showCreatePoll = false
     @State private var hasLoadedTransfers = false
     @State private var injuries: [InjuryData] = []
     @State private var isLoadingInjuries = false
@@ -22,12 +24,14 @@ struct NewsView: View {
     private let injuryService = APIFootballService()
 
     enum NewsTab: String, CaseIterable {
+        case polls = "Abstimmung"
         case news = "News"
         case transfers = "Transfers"
         case injuries = "Injuries"
 
         var localizedLabel: String {
             switch self {
+            case .polls:     return LanguageManager.shared.t("news.polls")
             case .news:      return LanguageManager.shared.t("tab.news")
             case .transfers: return LanguageManager.shared.t("news.transfers")
             case .injuries:  return "Injuries"
@@ -67,6 +71,7 @@ struct NewsView: View {
 
     private var isLoading: Bool {
         switch selectedTab {
+        case .polls:     return false
         case .news:      return newsService.isLoadingPersonalized
         case .transfers: return newsService.isLoadingTransfers
         case .injuries:  return isLoadingInjuries
@@ -75,6 +80,7 @@ struct NewsView: View {
 
     private var currentArticles: [NewsArticle] {
         switch selectedTab {
+        case .polls:     return []
         case .news:      return newsService.personalizedArticles
         case .transfers: return newsService.transferArticles
         case .injuries:  return []
@@ -93,11 +99,13 @@ struct NewsView: View {
                     })
 
                     tabPicker
-                    filterRow
+                    if selectedTab != .polls { filterRow }
 
                     ScrollView {
                         VStack(spacing: 16) {
-                            if isLoading {
+                            if selectedTab == .polls {
+                                pollsContent
+                            } else if isLoading {
                                 ProgressView().tint(.oneKickNeon).padding(.top, 50)
                                 Text("Lade \(selectedTab.rawValue)…")
                                     .foregroundColor(.gray).font(.caption)
@@ -124,6 +132,8 @@ struct NewsView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showProfileSheet) { ProfileView() }
+            .sheet(isPresented: $showCreatePoll) { CreateGlobalPollView(viewModel: pollVM) }
+            .onAppear { pollVM.startListening() }
             .task { await loadNews() }
             .onChange(of: favoritesOnly) { Task { await reloadCurrent() } }
             .onChange(of: selectedTab) {
@@ -248,6 +258,33 @@ struct NewsView: View {
     }
 
     @ViewBuilder
+    private var pollsContent: some View {
+        if GlobalPollViewModel.isDeveloper {
+            Button {
+                HapticManager.instance.impact(style: .light)
+                showCreatePoll = true
+            } label: {
+                Label("Neue Abstimmung", systemImage: "plus.circle.fill")
+                    .font(.system(size: 14, weight: .bold)).foregroundColor(.black)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(Color.oneKickNeon).cornerRadius(12)
+            }
+        }
+
+        if pollVM.activePolls.isEmpty {
+            VStack(spacing: 14) {
+                Image(systemName: "chart.bar.xaxis").font(.system(size: 40)).foregroundColor(.gray)
+                Text(lm.t("poll.empty")).font(.headline).foregroundColor(.white)
+            }
+            .frame(maxWidth: .infinity).padding(.top, 60)
+        } else {
+            ForEach(pollVM.activePolls) { poll in
+                GlobalPollCardView(poll: poll, viewModel: pollVM)
+            }
+        }
+    }
+
+    @ViewBuilder
     private var emptyState: some View {
         VStack(spacing: 14) {
             Image(systemName: selectedTab == .news ? "newspaper" : "arrow.left.arrow.right.circle")
@@ -285,6 +322,8 @@ struct NewsView: View {
 
     private func reloadCurrent() async {
         switch selectedTab {
+        case .polls:
+            break
         case .news:
             await newsService.fetchPersonalizedNews(
                 teamNames: effectiveTeamNames,

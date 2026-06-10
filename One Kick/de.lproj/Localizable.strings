@@ -1,6 +1,6 @@
 /* Tabs */
 "tab.start" = "Start";
-"tab.tippen" = "Tippen";
+"tab.tippen" = "Meine Tipps";
 "tab.news" = "News";
 "tab.statistik" = "Statistik";
 "tab.community" = "Community";
@@ -58,7 +58,7 @@
 "community.global" = "Globale Community";
 "community.joinCode" = "Mit Code beitreten";
 "community.myRankings" = "Meine Platzierungen";
-"community.loading" = "Wird geladen \u{2026}";
+"community.loading" = "Wird geladen …";
 "community.create" = "Liga erstellen";
 "community.noLeague" = "Keine Liga";
 "community.inviteCode" = "Dein Einladungscode";
@@ -72,7 +72,7 @@
 "tipping.edit" = "Tipp ändern";
 "tipping.liveInfo" = "Live-Info";
 "tipping.rounds" = "Runden";
-"tipping.infoOnly" = "Nur zur Information \u{00B7} kein Echtgeld";
+"tipping.infoOnly" = "Nur zur Information · kein Echtgeld";
 
 /* Login */
 "login.signIn" = "Anmelden";
@@ -88,7 +88,7 @@
 "login.or" = "oder";
 
 /* Allgemein */
-"general.loading" = "Laden \u{2026}";
+"general.loading" = "Laden …";
 "general.noData" = "Keine Daten";
 "general.error" = "Fehler";
 "general.yes" = "Ja";
@@ -99,7 +99,7 @@
 "general.rank" = "Platz";
 "general.of" = "von";
 "general.notAvailable" = "Nicht verfügbar";
-"general.loadingLeagues" = "Ligen werden geladen \u{2026}";
+"general.loadingLeagues" = "Ligen werden geladen …";
 
 /* Community (Ergänzungen) */
 "community.of" = "von";
@@ -116,21 +116,21 @@
 "profile.tapPhoto" = "Foto tippen zum Ändern";
 "profile.passwordReset.title" = "Passwort zurücksetzen";
 "profile.passwordReset.msg" = "Wir senden dir einen Link zum Zurücksetzen deines Passworts.";
-"profile.deleteAccount.title" = "Account wirklich l\u{00F6}schen?";
-"profile.deleteAccount.msg" = "Alle deine Tipps und Daten werden unwiderruflich gel\u{00F6}scht.";
-"profile.passwordReset.sent" = "\u{2713} E-Mail wurde gesendet";
+"profile.deleteAccount.title" = "Account wirklich löschen?";
+"profile.deleteAccount.msg" = "Alle deine Tipps und Daten werden unwiderruflich gelöscht.";
+"profile.passwordReset.sent" = "✓ E-Mail wurde gesendet";
 
 /* Punkteansicht */
 "punkteview.overall" = "Gesamt";
 "punkteview.leagues" = "Ligen";
 "punkteview.noTips" = "Noch keine Tipps";
-"punkteview.currentLeader" = "Aktueller F\u{00FC}hrender";
+"punkteview.currentLeader" = "Aktueller Führender";
 "punkteview.weeklyWinner" = "Spielwoche-Sieger";
-"punkteview.loadingPoints" = "Saison-Punkte werden geladen \u{2026}";
+"punkteview.loadingPoints" = "Saison-Punkte werden geladen …";
 "punkteview.noLeaderboard" = "Hier erscheint das Leaderboard, sobald Tipps abgegeben wurden.";
-"punkteview.loadingWeek" = "Spielwoche wird geladen \u{2026}";
+"punkteview.loadingWeek" = "Spielwoche wird geladen …";
 "punkteview.noMatches" = "Keine Spiele diese Woche";
-"punkteview.noMatchesDesc" = "In dieser Woche finden keine Spiele f\u{00FC}r diese Ligen statt.";
+"punkteview.noMatchesDesc" = "In dieser Woche finden keine Spiele für diese Ligen statt.";
 "punkteview.points" = "Punkte";
 
 /* Home (Ergänzungen) */
@@ -173,44 +173,51 @@
 
 /* Impressum */
 "legal.impressum.title" = "Impressum";
-"legal.impressum.section1" = "Angaben gem\u{00e4}\u{00df} \u{00a7} 5 TMG";
+"legal.impressum.section1" = "Angaben gemäß § 5 TMG";
 "legal.impressum.section2" = "Kontakt";
 "legal.impressum.section3" = "Hinweis";
 "legal.impressum.note" = "Diese App wird als privates, nicht-kommerzielles Projekt betrieben. Es besteht kein eingetragenes Gewerbe.";
 "legal.impressum.section4" = "Haftungshinweis";
-"legal.impressum.liability" = "Die Inhalte dieser App wurden mit gr\u{00f6}\u{00df}tm\u{00f6}glicher Sorgfalt erstellt. Da es sich um eine private Testversion handelt, wird keine Gew\u{00e4}hrleistung f\u{00fc}r die Richtigkeit, Vollst\u{00e4}ndigkeit oder Aktualit\u{00e4}t der angezeigten Informationen \u{00fc}bernommen.";
+"legal.impressum.liability" = "Die Inhalte dieser App wurden mit größtmöglicher Sorgfalt erstellt. Da es sich um eine private Testversion handelt, wird keine Gewährleistung für die Richtigkeit, Vollständigkeit oder Aktualität der angezeigten Informationen übernommen.";
 
 /* Datenschutz */
 "legal.privacy.title" = "Datenschutz";
-"legal.privacy.s1.title" = "\u{00dc}berblick";
-"legal.privacy.s1.text" = "Diese App ist ein privates, nicht-kommerzielles Projekt in der Testphase. Die Datenschutzerkl\u{00e4}rung informiert dar\u{00fc}ber, welche Daten verarbeitet werden und wo.";
+"legal.privacy.s1.title" = "Überblick";
+"legal.privacy.s1.text" = "Diese App ist ein privates, nicht-kommerzielles Projekt in der Testphase. Die Datenschutzerklärung informiert darüber, welche Daten verarbeitet werden und wo.";
 "legal.privacy.s2.title" = "Verantwortlicher (Art. 4 Nr. 7 DSGVO)";
 "legal.privacy.s3.title" = "Firebase Authentication";
-"legal.privacy.s3.text" = "F\u{00fc}r die Anmeldung wird Firebase Authentication von Google LLC genutzt. Dabei wird deine E-Mail-Adresse auf Servern von Google (Firebase) gespeichert. Google LLC hat seinen Sitz in den USA; die Daten\u{00fc}bertragung erfolgt auf Basis der EU-Standardvertragsklauseln.";
+"legal.privacy.s3.text" = "Für die Anmeldung wird Firebase Authentication von Google LLC genutzt. Dabei wird deine E-Mail-Adresse auf Servern von Google (Firebase) gespeichert. Google LLC hat seinen Sitz in den USA; die Datenübertragung erfolgt auf Basis der EU-Standardvertragsklauseln.";
 "legal.privacy.s3.link" = "Datenschutzrichtlinie Firebase: firebase.google.com/support/privacy";
 "legal.privacy.s4.title" = "Firebase Firestore (Datenbank)";
 "legal.privacy.s4.intro" = "Folgende Daten werden in Firebase Firestore (Google LLC) gespeichert, um die App-Funktionen bereitzustellen:";
-"legal.privacy.s4.b1" = "\u{2022} Tippdaten, Nutzernamen, Community-Mitgliedschaften, Spielergebnisse und Bonus-Tipps";
-"legal.privacy.s4.b2" = "\u{2022} Chat-Nachrichten innerhalb von Communities (Text, Absender-ID, Zeitstempel)";
-"legal.privacy.s4.b3" = "\u{2022} Globale Community: ausgew\u{00e4}hlte Ligen, Punktestand und Platzierung";
-"legal.privacy.s4.b4" = "\u{2022} Badges / Erfolge: freigeschaltete und angezeigte Achievements";
-"legal.privacy.s4.b5" = "\u{2022} Beitrittsdatum: Zeitstempel der Kontoerstellung";
-"legal.privacy.s4.legal" = "Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragsf\u{00fc}llung / vorvertragliche Ma\u{00df}nahmen).";
+"legal.privacy.s4.b1" = "• Tippdaten, Nutzernamen, Community-Mitgliedschaften, Spielergebnisse und Bonus-Tipps";
+"legal.privacy.s4.b2" = "• Chat-Nachrichten innerhalb von Communities (Text, Absender-ID, Zeitstempel)";
+"legal.privacy.s4.b3" = "• Globale Community: ausgewählte Ligen, Punktestand und Platzierung";
+"legal.privacy.s4.b4" = "• Badges / Erfolge: freigeschaltete und angezeigte Achievements";
+"legal.privacy.s4.b5" = "• Beitrittsdatum: Zeitstempel der Kontoerstellung";
+"legal.privacy.s4.legal" = "Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragsfüllung / vorvertragliche Maßnahmen).";
 "legal.privacy.s5.title" = "Anmeldung mit Apple und Google";
-"legal.privacy.s5.text1" = "Die App bietet die M\u{00f6}glichkeit, sich mit der Apple ID oder einem Google-Konto anzumelden. Authentifizierungsdaten (Name, E-Mail) werden an Firebase Authentication \u{00fc}bertragen. Es werden keine Passw\u{00f6}rter in der App gespeichert.";
-"legal.privacy.s5.text2" = "Bei der Anmeldung mit Apple werden nur die von dir freigegebenen Daten verarbeitet. Apple \u{00fc}bermittelt diese einmalig bei der ersten Anmeldung.";
+"legal.privacy.s5.text1" = "Die App bietet die Möglichkeit, sich mit der Apple ID oder einem Google-Konto anzumelden. Authentifizierungsdaten (Name, E-Mail) werden an Firebase Authentication übertragen. Es werden keine Passwörter in der App gespeichert.";
+"legal.privacy.s5.text2" = "Bei der Anmeldung mit Apple werden nur die von dir freigegebenen Daten verarbeitet. Apple übermittelt diese einmalig bei der ersten Anmeldung.";
 "legal.privacy.s5.link1" = "Datenschutz Apple: apple.com/legal/privacy";
 "legal.privacy.s5.link2" = "Datenschutz Google: policies.google.com/privacy";
 "legal.privacy.s6.title" = "API-Football (Spielplandaten)";
-"legal.privacy.s6.text" = "F\u{00fc}r Spielpl\u{00e4}ne, Ergebnisse und Statistiken werden Anfragen an die API-Football-Schnittstelle gestellt. Es werden dabei keine personenbezogenen Daten \u{00fc}bermittelt.";
-"legal.privacy.s7.title" = "Lokaler Speicher (auf deinem Ger\u{00e4}t)";
-"legal.privacy.s7.text" = "Einstellungen wie Lieblingsligen und Anzeigeoptionen werden ausschlie\u{00df}lich lokal \u{00fc}ber UserDefaults auf deinem Ger\u{00e4}t gespeichert und nicht an externe Server \u{00fc}bertragen.";
+"legal.privacy.s6.text" = "Für Spielpläne, Ergebnisse und Statistiken werden Anfragen an die API-Football-Schnittstelle gestellt. Es werden dabei keine personenbezogenen Daten übermittelt.";
+"legal.privacy.s7.title" = "Lokaler Speicher (auf deinem Gerät)";
+"legal.privacy.s7.text" = "Einstellungen wie Lieblingsligen und Anzeigeoptionen werden ausschließlich lokal über UserDefaults auf deinem Gerät gespeichert und nicht an externe Server übertragen.";
 "legal.privacy.s8.title" = "Apple App Store / Absturzberichte";
-"legal.privacy.s8.text" = "Die App wird \u{00fc}ber den Apple App Store vertrieben. Apple kann dabei anonymisierte Absturz- und Nutzungsdaten erfassen. Die Verarbeitung erfolgt anonym; eine Identifizierung einzelner Nutzer ist nicht m\u{00f6}glich.";
+"legal.privacy.s8.text" = "Die App wird über den Apple App Store vertrieben. Apple kann dabei anonymisierte Absturz- und Nutzungsdaten erfassen. Die Verarbeitung erfolgt anonym; eine Identifizierung einzelner Nutzer ist nicht möglich.";
 "legal.privacy.s9.title" = "Deine Rechte (DSGVO)";
-"legal.privacy.s9.text1" = "Du hast das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), L\u{00f6}schung (Art. 17), Einschr\u{00e4}nkung der Verarbeitung (Art. 18) sowie das Recht auf Daten\u{00fc}bertragbarkeit (Art. 20).";
-"legal.privacy.s9.text2" = "Zur Aus\u{00fc}bung deiner Rechte wende dich per E-Mail an: benni.diedrich@gmail.com";
+"legal.privacy.s9.text1" = "Du hast das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18) sowie das Recht auf Datenübertragbarkeit (Art. 20).";
+"legal.privacy.s9.text2" = "Zur Ausübung deiner Rechte wende dich per E-Mail an: benni.diedrich@gmail.com";
 "legal.privacy.s10.title" = "Keine Werbung, kein Tracking";
-"legal.privacy.s10.text" = "Diese App enth\u{00e4}lt keine Werbung, kein Tracking durch Drittanbieter und keine Analyse-Tools (z. B. Google Analytics).";
+"legal.privacy.s10.text" = "Diese App enthält keine Werbung, kein Tracking durch Drittanbieter und keine Analyse-Tools (z. B. Google Analytics).";
 "legal.privacy.stand" = "Stand";
 "legal.privacy.date" = "Juni 2026";
+
+/* Abstimmung / Polls */
+"news.polls" = "Abstimmung";
+"poll.submit" = "Abstimmen";
+"poll.vote" = "Stimme";
+"poll.votes" = "Stimmen";
+"poll.empty" = "Aktuell keine Abstimmung";
